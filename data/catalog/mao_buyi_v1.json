@@ -1,0 +1,258 @@
+{
+  "catalog_id": "mao_buyi_v1",
+  "reply_base_path": "/static/replies",
+  "songs": [
+    {
+      "song_id": "mao_buyi_xiaochou",
+      "song_name": "消愁",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "消愁 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4200,
+          "features": [
+            60,
+            62,
+            63,
+            67,
+            65,
+            63,
+            62,
+            60
+          ],
+          "reply_audio": "mao_buyi_xiaochou_next.wav",
+          "prompt_audio": "mao_buyi_xiaochou_prompt.wav",
+          "lyrics_file": "mao_buyi_xiaochou.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_like_me",
+      "song_name": "像我这样的人",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "像我这样的人 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4600,
+          "features": [
+            64,
+            64,
+            65,
+            67,
+            65,
+            64,
+            62,
+            60
+          ],
+          "reply_audio": "mao_buyi_like_me_next.wav",
+          "prompt_audio": "mao_buyi_like_me_prompt.wav",
+          "lyrics_file": "mao_buyi_like_me.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_summer",
+      "song_name": "盛夏",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "盛夏 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4300,
+          "features": [
+            55,
+            60,
+            62,
+            64,
+            67,
+            64,
+            62,
+            60
+          ],
+          "reply_audio": "mao_buyi_summer_next.wav",
+          "prompt_audio": "mao_buyi_summer_prompt.wav",
+          "lyrics_file": "mao_buyi_summer.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_unstained",
+      "song_name": "不染",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "不染 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4500,
+          "features": [
+            67,
+            69,
+            70,
+            72,
+            70,
+            69,
+            67,
+            65
+          ],
+          "reply_audio": "mao_buyi_unstained_next.wav",
+          "prompt_audio": "mao_buyi_unstained_prompt.wav",
+          "lyrics_file": "mao_buyi_unstained.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_ordinary_day",
+      "song_name": "平凡的一天",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "平凡的一天 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4200,
+          "features": [
+            60,
+            60,
+            62,
+            64,
+            62,
+            60,
+            57,
+            60
+          ],
+          "reply_audio": "mao_buyi_ordinary_day_next.wav",
+          "prompt_audio": "mao_buyi_ordinary_day_prompt.wav",
+          "lyrics_file": "mao_buyi_ordinary_day.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_meat_and_vegetable",
+      "song_name": "一荤一素",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "一荤一素 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4400,
+          "features": [
+            62,
+            65,
+            64,
+            62,
+            60,
+            62,
+            59,
+            57
+          ],
+          "reply_audio": "mao_buyi_meat_and_vegetable_next.wav",
+          "prompt_audio": "mao_buyi_meat_and_vegetable_prompt.wav",
+          "lyrics_file": "mao_buyi_meat_and_vegetable.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_borrow",
+      "song_name": "借",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "借 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4100,
+          "features": [
+            57,
+            60,
+            62,
+            60,
+            57,
+            55,
+            57,
+            60
+          ],
+          "reply_audio": "mao_buyi_borrow_next.wav",
+          "prompt_audio": "mao_buyi_borrow_prompt.wav",
+          "lyrics_file": "mao_buyi_borrow.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_murmur",
+      "song_name": "呓语",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "呓语 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4200,
+          "features": [
+            65,
+            64,
+            62,
+            60,
+            62,
+            64,
+            65,
+            67
+          ],
+          "reply_audio": "mao_buyi_murmur_next.wav",
+          "prompt_audio": "mao_buyi_murmur_prompt.wav",
+          "lyrics_file": "mao_buyi_murmur.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_no_question",
+      "song_name": "无问",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "无问 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4500,
+          "features": [
+            60,
+            63,
+            65,
+            67,
+            68,
+            67,
+            65,
+            63
+          ],
+          "reply_audio": "mao_buyi_no_question_next.wav",
+          "prompt_audio": "mao_buyi_no_question_prompt.wav",
+          "lyrics_file": "mao_buyi_no_question.txt"
+        }
+      ]
+    },
+    {
+      "song_id": "mao_buyi_muma_city",
+      "song_name": "牧马城市",
+      "segments": [
+        {
+          "line_id": "demo_segment_1",
+          "text": "牧马城市 - demo segment",
+          "start_ms": 0,
+          "end_ms": 4300,
+          "features": [
+            59,
+            62,
+            64,
+            66,
+            64,
+            62,
+            61,
+            59
+          ],
+          "reply_audio": "mao_buyi_muma_city_next.wav",
+          "prompt_audio": "mao_buyi_muma_city_prompt.wav",
+          "lyrics_file": "mao_buyi_muma_city.txt"
+        }
+      ]
+    }
+  ],
+  "prompt_base_path": "/static/prompts/mao_buyi_v1",
+  "lyrics_base_path": "data/lyrics/mao_buyi_v1"
+}

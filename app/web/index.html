@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Song Followup API Demo</title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Realtime Match</p>
+            <h1>毛不易歌曲接唱测试台</h1>
+          </div>
+          <div class="status" id="connectionStatus">Idle</div>
+        </header>
+
+        <div class="control-grid">
+          <label class="field">
+            <span>WebSocket URL</span>
+            <input id="wsUrl" value="ws://127.0.0.1:8000/v1/realtime-match" />
+          </label>
+
+          <label class="field">
+            <span>Catalog</span>
+            <input id="catalogId" value="mao_buyi_v1" />
+          </label>
+        </div>
+
+        <section class="songs" id="songGrid" aria-label="Song list"></section>
+
+        <div class="actions">
+          <button id="sendButton" class="primary">发送测试旋律</button>
+          <button id="randomPromptButton" class="secondary">随机播放一句</button>
+          <button id="recordButton" class="secondary">开始录音</button>
+          <button id="clearButton" class="secondary">清空结果</button>
+        </div>
+
+        <section class="recording-playback">
+          <div>
+            <p class="eyebrow">Recorded Audio</p>
+            <h2>最近录音</h2>
+          </div>
+          <audio id="recordedAudio" controls></audio>
+          <p class="hint" id="recordingHint">录音结束后会出现在这里。</p>
+        </section>
+      </section>
+
+      <section class="panel result-panel">
+        <div class="result-head">
+          <div>
+            <p class="eyebrow">Result</p>
+            <h2 id="resultTitle">等待测试</h2>
+          </div>
+          <div class="metric">
+            <span id="endToResult">--</span>
+            <small>end_to_result</small>
+          </div>
+        </div>
+
+        <div class="result-grid">
+          <div class="kv">
+            <span>Matched</span>
+            <strong id="matched">--</strong>
+          </div>
+          <div class="kv">
+            <span>Song ID</span>
+            <strong id="songId">--</strong>
+          </div>
+          <div class="kv">
+            <span>Confidence</span>
+            <strong id="confidence">--</strong>
+          </div>
+          <div class="kv">
+            <span>Line</span>
+            <strong id="matchedLine">--</strong>
+          </div>
+        </div>
+
+        <audio id="replyAudio" controls></audio>
+        <pre id="rawJson">{}</pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
