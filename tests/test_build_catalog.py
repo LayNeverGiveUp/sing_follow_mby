@@ -7,6 +7,9 @@ import tempfile
 import unittest
 import wave
 from pathlib import Path
+from unittest import mock
+
+from tools.build_catalog import load_lyrics_for_song
 
 
 class BuildCatalogTest(unittest.TestCase):
@@ -179,6 +182,25 @@ class BuildCatalogTest(unittest.TestCase):
             )
 
             self.assertIn("Built 2 segments", result.stdout)
+
+    def test_embedded_lrc_is_preferred_over_sidecar_lrc(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            lyrics_dir = tmp_path / "lyrics"
+            lyrics_dir.mkdir()
+            (lyrics_dir / "消愁.lrc").write_text("[00:00.00]sidecar line\n", encoding="utf-8")
+
+            with mock.patch("tools.build_catalog.extract_embedded_lrc_text", return_value="[00:00.00]embedded line\n"):
+                segments, source = load_lyrics_for_song(
+                    audio_path=tmp_path / "消愁.mp3",
+                    lyrics_dir=lyrics_dir,
+                    song_id="mao_buyi_xiaochou",
+                    song_name="消愁",
+                    audio_duration_ms=2000,
+                )
+
+            self.assertEqual(source, "embedded_id3")
+            self.assertEqual(segments[0].text, "embedded line")
 
 
 def write_sine_wav(path: Path) -> None:

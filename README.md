@@ -205,6 +205,8 @@ Build catalog, prompt clips, and reference lyric files:
 python tools/build_catalog.py
 ```
 
+When an MP3 contains embedded LRC-style lyrics in ID3 tags, the builder uses those embedded lyrics first. External `.lrc` or `.csv` files are used only as fallback.
+
 The builder writes:
 
 - `data/catalog/mao_buyi_v1.json`

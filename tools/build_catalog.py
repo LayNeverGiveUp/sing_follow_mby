@@ -10,7 +10,7 @@ import tempfile
 import wave
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,12 +65,19 @@ def main() -> None:
     songs = []
     for song_id, song_name in CATALOG_SONGS:
         audio_path = find_audio_path(audio_dir, song_id, song_name)
-        lyric_path = find_lyric_path(lyrics_dir, song_id, song_name)
-        if audio_path is None or lyric_path is None:
+        if audio_path is None:
             continue
 
         wav = read_audio_as_pcm16(audio_path)
-        lyric_segments = parse_lyrics(lyric_path, int(wav["duration_ms"]))
+        lyric_segments, lyric_source = load_lyrics_for_song(
+            audio_path=audio_path,
+            lyrics_dir=lyrics_dir,
+            song_id=song_id,
+            song_name=song_name,
+            audio_duration_ms=int(wav["duration_ms"]),
+        )
+        if not lyric_segments:
+            continue
         copy_lyrics_for_reference(lyric_segments, lyrics_out / f"{song_id}.txt")
 
         segments = []
@@ -96,12 +103,12 @@ def main() -> None:
             )
 
         if segments:
-            songs.append({"song_id": song_id, "song_name": song_name, "segments": segments})
+            songs.append({"song_id": song_id, "song_name": song_name, "lyric_source": lyric_source, "segments": segments})
 
     if not songs:
         raise SystemExit(
             "No songs were built. Put wav/mp3/m4a/aac/flac files in data/source_audio/mao_buyi_v1/ "
-            "and timestamp csv or lrc files in data/source_lyrics/mao_buyi_v1/."
+            "with embedded LRC lyrics, or timestamp csv/lrc files in data/source_lyrics/mao_buyi_v1/."
         )
 
     catalog = {
@@ -233,6 +240,57 @@ def find_lyric_path(lyrics_dir: Path, song_id: str, song_name: str) -> Optional[
     return None
 
 
+def load_lyrics_for_song(
+    audio_path: Path,
+    lyrics_dir: Path,
+    song_id: str,
+    song_name: str,
+    audio_duration_ms: int,
+) -> Tuple[List[LyricSegment], str]:
+    embedded_lrc = extract_embedded_lrc_text(audio_path)
+    if embedded_lrc:
+        segments = parse_lrc_text(embedded_lrc, audio_duration_ms)
+        if segments:
+            return segments, "embedded_id3"
+
+    lyric_path = find_lyric_path(lyrics_dir, song_id, song_name)
+    if lyric_path is None:
+        return [], "missing"
+    return parse_lyrics(lyric_path, audio_duration_ms), str(lyric_path)
+
+
+def extract_embedded_lrc_text(audio_path: Path) -> Optional[str]:
+    if audio_path.suffix.lower() not in {".mp3", ".m4a", ".aac", ".flac"}:
+        return None
+    try:
+        from mutagen import File
+    except ImportError:
+        return None
+
+    tags = File(audio_path)
+    if tags is None or tags.tags is None:
+        return None
+
+    candidates: List[str] = []
+    for key, value in tags.tags.items():
+        upper_key = str(key).upper()
+        if not any(marker in upper_key for marker in ("USLT", "SYLT", "LYRICS")):
+            continue
+        text = frame_to_text(value)
+        if text and "[" in text and "]" in text:
+            candidates.append(text)
+    return max(candidates, key=len) if candidates else None
+
+
+def frame_to_text(value) -> str:
+    text = getattr(value, "text", None)
+    if isinstance(text, list):
+        return "\n".join(str(item) for item in text)
+    if text is not None:
+        return str(text)
+    return str(value)
+
+
 def parse_lyrics(path: Path, audio_duration_ms: int) -> List[LyricSegment]:
     if path.suffix.lower() == ".csv":
         return parse_lyric_csv(path)
@@ -266,10 +324,14 @@ def parse_lyric_csv(path: Path) -> List[LyricSegment]:
 
 
 def parse_lrc(path: Path, audio_duration_ms: int, default_last_line_ms: int = 5000) -> List[LyricSegment]:
+    return parse_lrc_text(read_text_with_fallback(path), audio_duration_ms, default_last_line_ms=default_last_line_ms)
+
+
+def parse_lrc_text(text: str, audio_duration_ms: int, default_last_line_ms: int = 5000) -> List[LyricSegment]:
     timestamp_re = re.compile(r"\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]")
     entries: List[tuple[int, str]] = []
 
-    for raw_line in read_text_with_fallback(path).splitlines():
+    for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line:
             continue
