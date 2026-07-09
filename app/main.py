@@ -176,7 +176,10 @@ def _result_payload(
     sent_at = perf_counter()
     reply_url = None
     if result.reply_audio:
-        reply_url = f"{host}/static/replies/{result.reply_audio}"
+        if result.reply_audio.startswith("prompt:"):
+            reply_url = f"{host}/static/prompts/mao_buyi_v1/{result.reply_audio.removeprefix('prompt:')}"
+        else:
+            reply_url = f"{host}/static/replies/{result.reply_audio}"
     prompt_url = None
     if result.prompt_audio:
         prompt_url = f"{host}/static/prompts/mao_buyi_v1/{result.prompt_audio}"

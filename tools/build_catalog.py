@@ -76,6 +76,7 @@ def main() -> None:
             song_name=song_name,
             audio_duration_ms=int(wav["duration_ms"]),
         )
+        lyric_segments = filter_lyric_segments(lyric_segments, song_name)
         if not lyric_segments:
             continue
         copy_lyrics_for_reference(lyric_segments, lyrics_out / f"{song_id}.txt")
@@ -96,11 +97,15 @@ def main() -> None:
                     "start_ms": lyric.start_ms,
                     "end_ms": lyric.end_ms,
                     "features": features,
-                    "reply_audio": f"{song_id}_next.wav",
+                    "reply_audio": "",
                     "prompt_audio": prompt_audio,
                     "lyrics_file": f"{song_id}.txt",
                 }
             )
+
+        for index, segment in enumerate(segments):
+            next_index = index + 1 if index + 1 < len(segments) else index
+            segment["reply_audio"] = f"prompt:{segments[next_index]['prompt_audio']}"
 
         if segments:
             songs.append({"song_id": song_id, "song_name": song_name, "lyric_source": lyric_source, "segments": segments})
@@ -297,6 +302,76 @@ def parse_lyrics(path: Path, audio_duration_ms: int) -> List[LyricSegment]:
     if path.suffix.lower() == ".lrc":
         return parse_lrc(path, audio_duration_ms)
     raise ValueError(f"Unsupported lyric format: {path}")
+
+
+def filter_lyric_segments(segments: List[LyricSegment], song_name: str) -> List[LyricSegment]:
+    filtered: List[LyricSegment] = []
+    for segment in segments:
+        text = segment.text.strip()
+        if not text:
+            continue
+        if is_metadata_line(text, song_name):
+            continue
+        filtered.append(
+            LyricSegment(
+                line_id=f"line_{len(filtered) + 1:03d}",
+                start_ms=segment.start_ms,
+                end_ms=segment.end_ms,
+                text=text,
+            )
+        )
+    return filtered
+
+
+def is_metadata_line(text: str, song_name: str) -> bool:
+    compact = re.sub(r"\s+", "", text)
+    if not compact:
+        return True
+    if song_name and compact.startswith(song_name) and "-" in compact:
+        return True
+    metadata_prefixes = (
+        "词：",
+        "词:",
+        "作词：",
+        "作词:",
+        "曲：",
+        "曲:",
+        "作曲：",
+        "作曲:",
+        "编曲：",
+        "编曲:",
+        "制作人：",
+        "制作人:",
+        "音乐总监：",
+        "音乐总监:",
+        "音乐统筹：",
+        "音乐统筹:",
+        "乐队：",
+        "乐队:",
+        "乐队队长：",
+        "乐队队长:",
+        "键盘：",
+        "键盘:",
+        "鼓手：",
+        "鼓手:",
+        "吉他：",
+        "吉他:",
+        "贝斯：",
+        "贝斯:",
+        "和声：",
+        "和声:",
+        "打击乐：",
+        "打击乐:",
+        "电脑工程：",
+        "电脑工程:",
+        "混音：",
+        "混音:",
+        "母带：",
+        "母带:",
+        "录音：",
+        "录音:",
+    )
+    return compact.startswith(metadata_prefixes)
 
 
 def parse_lyric_csv(path: Path) -> List[LyricSegment]:

@@ -9,7 +9,7 @@ import wave
 from pathlib import Path
 from unittest import mock
 
-from tools.build_catalog import load_lyrics_for_song
+from tools.build_catalog import LyricSegment, filter_lyric_segments, load_lyrics_for_song
 
 
 class BuildCatalogTest(unittest.TestCase):
@@ -201,6 +201,19 @@ class BuildCatalogTest(unittest.TestCase):
 
             self.assertEqual(source, "embedded_id3")
             self.assertEqual(segments[0].text, "embedded line")
+
+    def test_filters_metadata_lines_from_lrc_segments(self) -> None:
+        segments = [
+            LyricSegment("line_001", 0, 1000, "一程山路 - 毛不易"),
+            LyricSegment("line_002", 1000, 2000, "词：毛不易"),
+            LyricSegment("line_003", 2000, 3000, "键盘：韩韵/杨猛"),
+            LyricSegment("line_004", 3000, 4000, "青石板留着谁的梦啊"),
+        ]
+
+        filtered = filter_lyric_segments(segments, "一程山路")
+
+        self.assertEqual([item.text for item in filtered], ["青石板留着谁的梦啊"])
+        self.assertEqual(filtered[0].line_id, "line_001")
 
 
 def write_sine_wav(path: Path) -> None:
