@@ -4,6 +4,9 @@ import argparse
 import csv
 import json
 import re
+import shutil
+import subprocess
+import tempfile
 import wave
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,7 +30,10 @@ CATALOG_SONGS = [
     ("mao_buyi_murmur", "呓语"),
     ("mao_buyi_no_question", "无问"),
     ("mao_buyi_muma_city", "牧马城市"),
+    ("mao_buyi_yichengshanlu", "一程山路"),
 ]
+
+SUPPORTED_AUDIO_EXTENSIONS = (".wav", ".mp3", ".m4a", ".aac", ".flac")
 
 
 @dataclass(frozen=True)
@@ -58,12 +64,12 @@ def main() -> None:
 
     songs = []
     for song_id, song_name in CATALOG_SONGS:
-        audio_path = audio_dir / f"{song_id}.wav"
-        lyric_path = find_lyric_path(lyrics_dir, song_id)
-        if not audio_path.exists() or lyric_path is None:
+        audio_path = find_audio_path(audio_dir, song_id, song_name)
+        lyric_path = find_lyric_path(lyrics_dir, song_id, song_name)
+        if audio_path is None or lyric_path is None:
             continue
 
-        wav = read_wav_pcm16(audio_path)
+        wav = read_audio_as_pcm16(audio_path)
         lyric_segments = parse_lyrics(lyric_path, int(wav["duration_ms"]))
         copy_lyrics_for_reference(lyric_segments, lyrics_out / f"{song_id}.txt")
 
@@ -94,7 +100,7 @@ def main() -> None:
 
     if not songs:
         raise SystemExit(
-            "No songs were built. Put wav files in data/source_audio/mao_buyi_v1/ "
+            "No songs were built. Put wav/mp3/m4a/aac/flac files in data/source_audio/mao_buyi_v1/ "
             "and timestamp csv or lrc files in data/source_lyrics/mao_buyi_v1/."
         )
 
@@ -110,6 +116,47 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Built {sum(len(song['segments']) for song in songs)} segments from {len(songs)} songs -> {out_path}")
+
+
+def find_audio_path(audio_dir: Path, song_id: str, song_name: str) -> Optional[Path]:
+    for stem in (song_id, song_name):
+        for suffix in SUPPORTED_AUDIO_EXTENSIONS:
+            path = audio_dir / f"{stem}{suffix}"
+            if path.exists():
+                return path
+    return None
+
+
+def read_audio_as_pcm16(path: Path) -> Dict[str, object]:
+    if path.suffix.lower() == ".wav":
+        return read_wav_pcm16(path)
+    return decode_with_ffmpeg(path)
+
+
+def decode_with_ffmpeg(path: Path) -> Dict[str, object]:
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError(
+            f"{path} requires ffmpeg for decoding. Install ffmpeg or convert the file to 16-bit PCM WAV."
+        )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        wav_path = Path(tmp) / "decoded.wav"
+        command = [
+            ffmpeg,
+            "-y",
+            "-i",
+            str(path),
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-sample_fmt",
+            "s16",
+            str(wav_path),
+        ]
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        return read_wav_pcm16(wav_path)
 
 
 def read_wav_pcm16(path: Path) -> Dict[str, object]:
@@ -156,11 +203,12 @@ def slice_pcm(pcm: bytes, sample_rate: int, start_ms: int, end_ms: int) -> bytes
     return pcm[max(0, start) : max(start, end)]
 
 
-def find_lyric_path(lyrics_dir: Path, song_id: str) -> Optional[Path]:
-    for suffix in (".csv", ".lrc"):
-        path = lyrics_dir / f"{song_id}{suffix}"
-        if path.exists():
-            return path
+def find_lyric_path(lyrics_dir: Path, song_id: str, song_name: str) -> Optional[Path]:
+    for stem in (song_id, song_name):
+        for suffix in (".csv", ".lrc"):
+            path = lyrics_dir / f"{stem}{suffix}"
+            if path.exists():
+                return path
     return None
 
 

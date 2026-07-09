@@ -8,6 +8,12 @@ Expected filenames match source audio IDs, for example:
 mao_buyi_xiaochou.lrc
 ```
 
+Chinese song names are also accepted, for example:
+
+```text
+消愁.lrc
+```
+
 LRC format:
 
 ```text

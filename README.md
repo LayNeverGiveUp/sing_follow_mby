@@ -151,10 +151,28 @@ data/lyrics/mao_buyi_v1/
 
 ## Build A Real Matching Catalog
 
-Put licensed full-song 16-bit PCM WAV files here:
+Put licensed full-song audio files here:
 
 ```text
 data/source_audio/mao_buyi_v1/
+```
+
+Supported extensions:
+
+```text
+.wav .mp3 .m4a .aac .flac
+```
+
+WAV is read directly. MP3/M4A/AAC/FLAC require `ffmpeg` to be installed.
+
+Both song IDs and Chinese song names are accepted:
+
+```text
+data/source_audio/mao_buyi_v1/mao_buyi_xiaochou.mp3
+data/source_lyrics/mao_buyi_v1/mao_buyi_xiaochou.lrc
+
+data/source_audio/mao_buyi_v1/消愁.mp3
+data/source_lyrics/mao_buyi_v1/消愁.lrc
 ```
 
 Put timestamped lyric files here:

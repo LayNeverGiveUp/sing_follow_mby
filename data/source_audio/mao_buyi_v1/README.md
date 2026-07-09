@@ -1,6 +1,14 @@
 # Source Audio
 
-Put licensed full-song WAV files here.
+Put licensed full-song audio files here.
+
+Supported extensions:
+
+- `.wav`
+- `.mp3`
+- `.m4a`
+- `.aac`
+- `.flac`
 
 Expected filenames:
 
@@ -14,5 +22,8 @@ Expected filenames:
 - `mao_buyi_murmur.wav`
 - `mao_buyi_no_question.wav`
 - `mao_buyi_muma_city.wav`
+- `mao_buyi_yichengshanlu.wav`
 
-Current importer supports mono or stereo 16-bit PCM WAV.
+The importer reads WAV directly. MP3/M4A/AAC/FLAC require `ffmpeg` to be installed.
+
+Chinese song names are also accepted, for example `消愁.mp3` with `消愁.lrc`.

@@ -3,3 +3,21 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .DS_Store
+
+# Licensed/source assets stay local.
+data/source_audio/**/*
+data/source_lyrics/**/*
+data/prompts/**/*
+data/lyrics/**/*
+!data/source_audio/
+!data/source_audio/**/
+!data/source_audio/**/README.md
+!data/source_lyrics/
+!data/source_lyrics/**/
+!data/source_lyrics/**/README.md
+!data/prompts/
+!data/prompts/**/
+!data/prompts/**/README.md
+!data/lyrics/
+!data/lyrics/**/
+!data/lyrics/**/README.md
