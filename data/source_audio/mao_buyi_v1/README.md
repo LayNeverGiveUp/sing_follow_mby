@@ -24,6 +24,7 @@ Expected filenames:
 - `mao_buyi_muma_city.wav`
 - `mao_buyi_yichengshanlu.wav`
 
-The importer reads WAV directly. MP3/M4A/AAC/FLAC require `ffmpeg` to be installed.
+The importer reads WAV directly. MP3 is decoded by the Python `miniaudio` dependency.
+Other encoded formats can use `ffmpeg` when installed.
 
 Chinese song names are also accepted, for example `消愁.mp3` with `消愁.lrc`.

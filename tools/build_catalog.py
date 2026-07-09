@@ -130,14 +130,35 @@ def find_audio_path(audio_dir: Path, song_id: str, song_name: str) -> Optional[P
 def read_audio_as_pcm16(path: Path) -> Dict[str, object]:
     if path.suffix.lower() == ".wav":
         return read_wav_pcm16(path)
+    decoded = decode_with_miniaudio(path)
+    if decoded is not None:
+        return decoded
     return decode_with_ffmpeg(path)
+
+
+def decode_with_miniaudio(path: Path) -> Optional[Dict[str, object]]:
+    try:
+        import miniaudio
+    except ImportError:
+        return None
+
+    sound = miniaudio.decode_file(
+        str(path),
+        output_format=miniaudio.SampleFormat.SIGNED16,
+        nchannels=1,
+        sample_rate=16000,
+    )
+    pcm = sound.samples.tobytes()
+    duration_ms = int((len(sound.samples) / sound.nchannels) * 1000 / sound.sample_rate)
+    return {"pcm": pcm, "sample_rate": sound.sample_rate, "duration_ms": duration_ms}
 
 
 def decode_with_ffmpeg(path: Path) -> Dict[str, object]:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         raise RuntimeError(
-            f"{path} requires ffmpeg for decoding. Install ffmpeg or convert the file to 16-bit PCM WAV."
+            f"{path} requires miniaudio or ffmpeg for decoding. Install project requirements, "
+            "install ffmpeg, or convert the file to 16-bit PCM WAV."
         )
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -248,7 +269,7 @@ def parse_lrc(path: Path, audio_duration_ms: int, default_last_line_ms: int = 50
     timestamp_re = re.compile(r"\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]")
     entries: List[tuple[int, str]] = []
 
-    for raw_line in path.read_text(encoding="utf-8-sig").splitlines():
+    for raw_line in read_text_with_fallback(path).splitlines():
         line = raw_line.strip()
         if not line:
             continue
@@ -288,6 +309,15 @@ def parse_lrc(path: Path, audio_duration_ms: int, default_last_line_ms: int = 50
             )
         )
     return segments
+
+
+def read_text_with_fallback(path: Path) -> str:
+    for encoding in ("utf-8-sig", "utf-8", "gb18030"):
+        try:
+            return path.read_text(encoding=encoding)
+        except UnicodeDecodeError:
+            continue
+    return path.read_text(encoding="utf-8", errors="replace")
 
 
 def copy_lyrics_for_reference(segments: Iterable[LyricSegment], path: Path) -> None:

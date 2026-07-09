@@ -34,28 +34,27 @@ class RealtimeMatcherTest(unittest.TestCase):
         self.assertFalse(result.matched)
         self.assertEqual(result.handoff_type, "fallback")
 
-    def test_matches_mao_buyi_catalog_demo_features(self) -> None:
+    def test_matches_mao_buyi_catalog_segment_features(self) -> None:
         base_dir = Path(__file__).resolve().parents[1]
         catalog = CatalogStore(base_dir / "data" / "catalog").load("mao_buyi_v1")
+        expected = catalog.segments[0]
         matcher = RealtimeMatcher(catalog)
-        matcher.append_features([60, 62, 63])
-        matcher.append_features([67, 65, 63])
-        matcher.append_features([62, 60])
+        midpoint = max(1, len(expected.features) // 2)
+        matcher.append_features(expected.features[:midpoint])
+        matcher.append_features(expected.features[midpoint:])
 
         result = matcher.finalize()
 
         self.assertTrue(result.matched)
-        self.assertEqual(result.song_id, "mao_buyi_xiaochou")
-        self.assertEqual(result.song_name, "消愁")
-        self.assertEqual(result.reply_audio, "mao_buyi_xiaochou_next.wav")
+        self.assertEqual(result.song_id, expected.song_id)
+        self.assertEqual(result.line_id, expected.line_id)
+        self.assertEqual(result.reply_audio, expected.reply_audio)
 
-    def test_synthetic_pcm_pitch_matches_mao_buyi_catalog(self) -> None:
-        base_dir = Path(__file__).resolve().parents[1]
-        catalog = CatalogStore(base_dir / "data" / "catalog").load("mao_buyi_v1")
-        matcher = RealtimeMatcher(catalog)
+    def test_synthetic_pcm_pitch_matches_kids_catalog(self) -> None:
+        matcher = RealtimeMatcher(self.catalog)
         extractor = StreamingPitchExtractor(sample_rate=16000)
 
-        for midi in [60, 62, 63, 67, 65, 63, 62, 60]:
+        for midi in [60, 60, 67, 67, 69, 69, 67]:
             pcm = _sine_pcm16(_midi_to_hz(midi), sample_rate=16000, duration_ms=130)
             for offset in range(0, len(pcm), 2048):
                 matcher.append_features(extractor.append_pcm16(pcm[offset : offset + 2048]))
@@ -63,7 +62,7 @@ class RealtimeMatcherTest(unittest.TestCase):
         result = matcher.finalize()
 
         self.assertTrue(result.matched)
-        self.assertEqual(result.song_id, "mao_buyi_xiaochou")
+        self.assertEqual(result.song_id, "twinkle_twinkle")
 
 
 def _midi_to_hz(midi: float) -> float:

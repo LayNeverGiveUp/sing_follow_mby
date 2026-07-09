@@ -164,6 +164,7 @@ Supported extensions:
 ```
 
 WAV is read directly. MP3/M4A/AAC/FLAC require `ffmpeg` to be installed.
+The project also supports MP3 decoding through the Python `miniaudio` dependency in `requirements.txt`.
 
 Both song IDs and Chinese song names are accepted:
 

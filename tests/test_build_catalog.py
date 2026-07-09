@@ -133,7 +133,11 @@ class BuildCatalogTest(unittest.TestCase):
             )
 
             if result.returncode != 0:
-                self.assertTrue("ffmpeg" in result.stderr.lower() or "invalid data" in result.stderr.lower())
+                self.assertTrue(
+                    "ffmpeg" in result.stderr.lower()
+                    or "invalid data" in result.stderr.lower()
+                    or "decodeerror" in result.stderr.lower()
+                )
 
     def test_chinese_song_name_files_are_accepted(self) -> None:
         root = Path(__file__).resolve().parents[1]
