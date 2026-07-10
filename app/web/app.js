@@ -14,7 +14,6 @@ const state = {
 };
 
 const els = {
-  songGrid: document.querySelector("#songGrid"),
   sendButton: document.querySelector("#sendButton"),
   randomPromptButton: document.querySelector("#randomPromptButton"),
   recordButton: document.querySelector("#recordButton"),
@@ -35,18 +34,7 @@ const els = {
 };
 
 function renderSongs() {
-  els.songGrid.innerHTML = "";
-  for (const song of state.songs) {
-    const button = document.createElement("button");
-    button.className = `song${song.id === state.selected.id && song.lineId === state.selected.lineId ? " selected" : ""}`;
-    button.type = "button";
-    button.innerHTML = `<strong>${song.name}</strong><span>${song.text || song.id}</span>`;
-    button.addEventListener("click", () => {
-      state.selected = song;
-      renderSongs();
-    });
-    els.songGrid.appendChild(button);
-  }
+  // Catalog segments stay internal; the UI intentionally does not render each slice.
 }
 
 function setStatus(label, mode = "") {
