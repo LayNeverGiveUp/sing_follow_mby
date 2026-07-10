@@ -11,6 +11,8 @@ const state = {
   running: false,
   recorder: null,
   recordedUrl: null,
+  speechRecognition: null,
+  asrTranscript: "",
 };
 
 const els = {
@@ -27,6 +29,10 @@ const els = {
   songId: document.querySelector("#songId"),
   confidence: document.querySelector("#confidence"),
   matchedLine: document.querySelector("#matchedLine"),
+  asrTranscript: document.querySelector("#asrTranscript"),
+  recallSource: document.querySelector("#recallSource"),
+  asrStatus: document.querySelector("#asrStatus"),
+  candidateCount: document.querySelector("#candidateCount"),
   rawJson: document.querySelector("#rawJson"),
   replyAudio: document.querySelector("#replyAudio"),
   recordedAudio: document.querySelector("#recordedAudio"),
@@ -49,6 +55,10 @@ function clearResult() {
   els.songId.textContent = "--";
   els.confidence.textContent = "--";
   els.matchedLine.textContent = "--";
+  els.asrTranscript.textContent = "等待识别";
+  els.recallSource.textContent = "--";
+  els.asrStatus.textContent = "--";
+  els.candidateCount.textContent = "--";
   els.rawJson.textContent = "{}";
   els.replyAudio.removeAttribute("src");
   els.replyAudio.load();
@@ -62,6 +72,10 @@ function updateResult(result) {
   els.songId.textContent = result.song_id || "--";
   els.confidence.textContent = typeof result.confidence === "number" ? result.confidence.toFixed(4) : "--";
   els.matchedLine.textContent = result.matched_line || "--";
+  els.asrTranscript.textContent = result.asr_transcript || "未返回识别文本";
+  els.recallSource.textContent = result.recall_source || "--";
+  els.asrStatus.textContent = result.asr_status || "--";
+  els.candidateCount.textContent = typeof result.candidate_count === "number" ? String(result.candidate_count) : "--";
   els.rawJson.textContent = JSON.stringify(result, null, 2);
 
   if (result.reply_audio_url) {
@@ -165,6 +179,47 @@ function setRecordedAudioUrl(url, hint) {
   els.recordedAudio.src = url;
   els.recordedAudio.load();
   els.recordingHint.textContent = hint;
+}
+
+function startBrowserAsr() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  state.asrTranscript = "";
+  if (!SpeechRecognition) {
+    return null;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "zh-CN";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.onresult = (event) => {
+    let text = "";
+    for (let index = 0; index < event.results.length; index += 1) {
+      text += event.results[index][0]?.transcript || "";
+    }
+    state.asrTranscript = text.trim();
+  };
+  recognition.onerror = () => {
+    state.speechRecognition = null;
+  };
+
+  try {
+    recognition.start();
+    state.speechRecognition = recognition;
+    return recognition;
+  } catch (_) {
+    return null;
+  }
+}
+
+function stopBrowserAsr() {
+  if (!state.speechRecognition) return;
+  try {
+    state.speechRecognition.stop();
+  } catch (_) {
+    // Ignore browsers that already stopped recognition.
+  }
+  state.speechRecognition = null;
 }
 
 async function waitForOpen(socket) {
@@ -330,6 +385,7 @@ async function startRecording() {
     audioContext = new AudioContext({ sampleRate: 16000 });
     source = audioContext.createMediaStreamSource(mediaStream);
     processor = audioContext.createScriptProcessor(2048, 1, 1);
+    startBrowserAsr();
 
     socket.send(
       JSON.stringify({
@@ -363,6 +419,7 @@ async function startRecording() {
       sampleRate: audioContext.sampleRate,
     };
   } catch (error) {
+    stopBrowserAsr();
     if (processor) processor.disconnect();
     if (source) source.disconnect();
     if (mediaStream) {
@@ -398,13 +455,19 @@ async function stopRecording() {
     recorder.processor.disconnect();
     recorder.source.disconnect();
     recorder.mediaStream.getTracks().forEach((track) => track.stop());
+    stopBrowserAsr();
     await recorder.audioContext.close();
     setRecordedAudio(recorder.pcmChunks, recorder.sampleRate);
 
     const endSentAt = performance.now();
+    if (state.asrTranscript) {
+      recorder.socket.send(JSON.stringify({ type: "asr_transcript", text: state.asrTranscript }));
+    }
     recorder.socket.send(JSON.stringify({ type: "end" }));
     const result = await waitForResult(recorder.socket, endSentAt, recorder.started);
     updateResult(result);
+    const asrText = result.asr_transcript ? `ASR：${result.asr_transcript}` : `ASR 状态：${result.asr_status || "--"}`;
+    els.recordingHint.textContent = `${els.recordingHint.textContent} ${asrText}`;
     setStatus("Done", "active");
   } catch (error) {
     setStatus("Error", "error");

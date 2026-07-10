@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Song Followup API Demo</title>
     <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=asr-layout-2" />
   </head>
   <body>
     <main class="shell">
@@ -78,11 +78,36 @@
           </div>
         </div>
 
+        <section class="asr-panel">
+          <div>
+            <p class="eyebrow">ASR</p>
+            <h2>语音识别</h2>
+          </div>
+          <div class="asr-grid">
+            <div class="kv asr-text asr-span">
+              <span>Transcript</span>
+              <strong id="asrTranscript">等待识别</strong>
+            </div>
+            <div class="kv">
+              <span>Recall</span>
+              <strong id="recallSource">--</strong>
+            </div>
+            <div class="kv">
+              <span>Status</span>
+              <strong id="asrStatus">--</strong>
+            </div>
+            <div class="kv">
+              <span>Candidates</span>
+              <strong id="candidateCount">--</strong>
+            </div>
+          </div>
+        </section>
+
         <audio id="replyAudio" controls></audio>
         <pre id="rawJson">{}</pre>
       </section>
     </main>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=asr-layout-2"></script>
   </body>
 </html>

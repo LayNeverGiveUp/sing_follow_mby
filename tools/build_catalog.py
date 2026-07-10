@@ -49,6 +49,8 @@ def main() -> None:
     parser.add_argument("--catalog-id", default="mao_buyi_v1")
     parser.add_argument("--audio-dir", default="data/source_audio/mao_buyi_v1")
     parser.add_argument("--lyrics-dir", default="data/source_lyrics/mao_buyi_v1")
+    parser.add_argument("--vocals-dir", default="data/source_vocals/mao_buyi_v1")
+    parser.add_argument("--separation-mode", choices=("none", "prefer-existing", "demucs"), default="prefer-existing")
     parser.add_argument("--catalog-out", default="data/catalog/mao_buyi_v1.json")
     parser.add_argument("--prompts-out", default="data/prompts/mao_buyi_v1")
     parser.add_argument("--lyrics-out", default="data/lyrics/mao_buyi_v1")
@@ -57,6 +59,7 @@ def main() -> None:
 
     audio_dir = Path(args.audio_dir)
     lyrics_dir = Path(args.lyrics_dir)
+    vocals_dir = Path(args.vocals_dir)
     prompts_out = Path(args.prompts_out)
     lyrics_out = Path(args.lyrics_out)
     prompts_out.mkdir(parents=True, exist_ok=True)
@@ -68,13 +71,21 @@ def main() -> None:
         if audio_path is None:
             continue
 
-        wav = read_audio_as_pcm16(audio_path)
+        source_wav = read_audio_as_pcm16(audio_path)
+        feature_audio_path = resolve_feature_audio_path(
+            audio_path=audio_path,
+            vocals_dir=vocals_dir,
+            song_id=song_id,
+            song_name=song_name,
+            separation_mode=args.separation_mode,
+        )
+        feature_wav = read_audio_as_pcm16(feature_audio_path) if feature_audio_path else source_wav
         lyric_segments, lyric_source = load_lyrics_for_song(
             audio_path=audio_path,
             lyrics_dir=lyrics_dir,
             song_id=song_id,
             song_name=song_name,
-            audio_duration_ms=int(wav["duration_ms"]),
+            audio_duration_ms=int(source_wav["duration_ms"]),
         )
         lyric_segments = filter_lyric_segments(lyric_segments, song_name)
         if not lyric_segments:
@@ -83,13 +94,22 @@ def main() -> None:
 
         segments = []
         for index, lyric in enumerate(lyric_segments, start=1):
-            pcm = slice_pcm(wav["pcm"], wav["sample_rate"], lyric.start_ms, lyric.end_ms)
-            features = [round(value, 3) for value in extract_pitch_features_from_pcm16(pcm, wav["sample_rate"])]
+            feature_pcm = slice_pcm(
+                feature_wav["pcm"],
+                feature_wav["sample_rate"],
+                lyric.start_ms,
+                lyric.end_ms,
+            )
+            prompt_pcm = slice_pcm(source_wav["pcm"], source_wav["sample_rate"], lyric.start_ms, lyric.end_ms)
+            features = [
+                round(value, 3)
+                for value in extract_pitch_features_from_pcm16(feature_pcm, feature_wav["sample_rate"])
+            ]
             if len(features) < args.min_feature_count:
                 continue
 
             prompt_audio = f"{song_id}_{lyric.line_id}_prompt.wav"
-            write_wav_pcm16(prompts_out / prompt_audio, pcm, wav["sample_rate"])
+            write_wav_pcm16(prompts_out / prompt_audio, prompt_pcm, source_wav["sample_rate"])
             segments.append(
                 {
                     "line_id": lyric.line_id or f"line_{index}",
@@ -108,7 +128,15 @@ def main() -> None:
             segment["reply_audio"] = f"prompt:{segments[next_index]['prompt_audio']}"
 
         if segments:
-            songs.append({"song_id": song_id, "song_name": song_name, "lyric_source": lyric_source, "segments": segments})
+            songs.append(
+                {
+                    "song_id": song_id,
+                    "song_name": song_name,
+                    "lyric_source": lyric_source,
+                    "feature_audio_source": "vocals" if feature_audio_path else "source_mix",
+                    "segments": segments,
+                }
+            )
 
     if not songs:
         raise SystemExit(
@@ -137,6 +165,54 @@ def find_audio_path(audio_dir: Path, song_id: str, song_name: str) -> Optional[P
             if path.exists():
                 return path
     return None
+
+
+def resolve_feature_audio_path(
+    audio_path: Path,
+    vocals_dir: Path,
+    song_id: str,
+    song_name: str,
+    separation_mode: str,
+) -> Optional[Path]:
+    if separation_mode == "none":
+        return None
+
+    vocal_path = find_audio_path(vocals_dir, song_id, song_name)
+    if vocal_path is not None:
+        return vocal_path
+
+    if separation_mode != "demucs":
+        return None
+
+    return separate_vocals_with_demucs(audio_path, vocals_dir / f"{song_id}.wav")
+
+
+def separate_vocals_with_demucs(audio_path: Path, target_path: Path) -> Path:
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        out_dir = Path(tmp) / "demucs"
+        command = [
+            sys.executable,
+            "-m",
+            "demucs",
+            "--two-stems=vocals",
+            "--out",
+            str(out_dir),
+            str(audio_path),
+        ]
+        try:
+            subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(
+                "Demucs vocal separation failed. Install demucs or pre-place separated vocals in "
+                f"{target_path.parent}."
+            ) from exc
+
+        matches = list(out_dir.glob(f"*/{audio_path.stem}/vocals.wav"))
+        if not matches:
+            raise RuntimeError(f"Demucs did not produce vocals.wav for {audio_path}")
+        shutil.copyfile(matches[0], target_path)
+    return target_path
 
 
 def read_audio_as_pcm16(path: Path) -> Dict[str, object]:

@@ -50,6 +50,39 @@ class RealtimeMatcherTest(unittest.TestCase):
         self.assertEqual(result.line_id, expected.line_id)
         self.assertEqual(result.reply_audio, expected.reply_audio)
 
+    def test_matches_mao_buyi_segment_with_octave_spikes(self) -> None:
+        base_dir = Path(__file__).resolve().parents[1]
+        catalog = CatalogStore(base_dir / "data" / "catalog").load("mao_buyi_v1")
+        expected = catalog.segments[0]
+        noisy_features = list(expected.features)
+        for index in range(4, len(noisy_features), 12):
+            noisy_features[index] += 12.0
+        matcher = RealtimeMatcher(catalog)
+
+        matcher.append_features(noisy_features)
+        result = matcher.finalize()
+
+        self.assertTrue(result.matched)
+        self.assertEqual(result.song_id, expected.song_id)
+        self.assertEqual(result.line_id, expected.line_id)
+
+    def test_asr_text_recall_then_audio_rerank(self) -> None:
+        base_dir = Path(__file__).resolve().parents[1]
+        catalog = CatalogStore(base_dir / "data" / "catalog").load("mao_buyi_v1")
+        expected = catalog.segments[1]
+        matcher = RealtimeMatcher(catalog)
+
+        matcher.set_transcript(expected.text)
+        matcher.append_features(expected.features)
+        result = matcher.finalize()
+
+        self.assertTrue(result.matched)
+        self.assertEqual(result.song_id, expected.song_id)
+        self.assertEqual(result.line_id, expected.line_id)
+        self.assertEqual(result.asr_transcript, expected.text)
+        self.assertEqual(result.recall_source, "asr_text_recall")
+        self.assertLessEqual(result.candidate_count, 16)
+
     def test_synthetic_pcm_pitch_matches_kids_catalog(self) -> None:
         matcher = RealtimeMatcher(self.catalog)
         extractor = StreamingPitchExtractor(sample_rate=16000)

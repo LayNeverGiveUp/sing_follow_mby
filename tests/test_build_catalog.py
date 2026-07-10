@@ -1,4 +1,5 @@
 import csv
+import json
 import math
 import struct
 import subprocess
@@ -183,6 +184,53 @@ class BuildCatalogTest(unittest.TestCase):
 
             self.assertIn("Built 2 segments", result.stdout)
 
+    def test_prefers_separated_vocals_for_matching_features(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            audio_dir = tmp_path / "audio"
+            vocals_dir = tmp_path / "vocals"
+            lyrics_dir = tmp_path / "lyrics"
+            prompts_dir = tmp_path / "prompts"
+            lyrics_out = tmp_path / "lyrics_out"
+            catalog_out = tmp_path / "catalog.json"
+            audio_dir.mkdir()
+            vocals_dir.mkdir()
+            lyrics_dir.mkdir()
+
+            write_constant_sine_wav(audio_dir / "mao_buyi_xiaochou.wav", midi=60)
+            write_constant_sine_wav(vocals_dir / "mao_buyi_xiaochou.wav", midi=72)
+            (lyrics_dir / "mao_buyi_xiaochou.lrc").write_text("[00:00.00]first line\n", encoding="utf-8")
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    "tools/build_catalog.py",
+                    "--audio-dir",
+                    str(audio_dir),
+                    "--vocals-dir",
+                    str(vocals_dir),
+                    "--lyrics-dir",
+                    str(lyrics_dir),
+                    "--catalog-out",
+                    str(catalog_out),
+                    "--prompts-out",
+                    str(prompts_dir),
+                    "--lyrics-out",
+                    str(lyrics_out),
+                ],
+                cwd=root,
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+
+            payload = json.loads(catalog_out.read_text(encoding="utf-8"))
+            features = payload["songs"][0]["segments"][0]["features"]
+
+            self.assertEqual(payload["songs"][0]["feature_audio_source"], "vocals")
+            self.assertGreater(sum(features) / len(features), 70)
+
     def test_embedded_lrc_is_preferred_over_sidecar_lrc(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -224,6 +272,18 @@ def write_sine_wav(path: Path) -> None:
         wav.setframerate(sample_rate)
         for index in range(int(sample_rate * 2.0)):
             freq = 261.63 if index < sample_rate else 293.66
+            sample = int(12000 * math.sin(2.0 * math.pi * freq * index / sample_rate))
+            wav.writeframes(struct.pack("<h", sample))
+
+
+def write_constant_sine_wav(path: Path, midi: float) -> None:
+    sample_rate = 16000
+    freq = 440.0 * (2.0 ** ((midi - 69.0) / 12.0))
+    with wave.open(str(path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        for index in range(int(sample_rate * 1.2)):
             sample = int(12000 * math.sin(2.0 * math.pi * freq * index / sample_rate))
             wav.writeframes(struct.pack("<h", sample))
 

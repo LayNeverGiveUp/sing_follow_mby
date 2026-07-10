@@ -8,6 +8,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.asr import get_asr_engine
 from app.audio.features import StreamingPitchExtractor
 from app.matching.catalog import CatalogStore
 from app.matching.engine import RealtimeMatcher
@@ -16,16 +17,19 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 
 app = FastAPI(title="Song Followup API", version="0.1.0")
+(DATA_DIR / "asr_uploads").mkdir(parents=True, exist_ok=True)
 app.mount("/static/replies", StaticFiles(directory=DATA_DIR / "replies"), name="replies")
 app.mount("/static/prompts", StaticFiles(directory=DATA_DIR / "prompts"), name="prompts")
+app.mount("/static/asr", StaticFiles(directory=DATA_DIR / "asr_uploads"), name="asr_uploads")
 app.mount("/demo", StaticFiles(directory=BASE_DIR / "app" / "web", html=True), name="demo")
 
 catalog_store = CatalogStore(DATA_DIR / "catalog")
+asr_engine = get_asr_engine()
 
 
 @app.get("/health")
 def health() -> Dict[str, Any]:
-    return {"status": "ok", "service": "song-followup-api"}
+    return {"status": "ok", "service": "song-followup-api", "asr": asr_engine.status}
 
 
 @app.get("/v1/catalog/{catalog_id}")
@@ -67,10 +71,14 @@ async def realtime_match(websocket: WebSocket) -> None:
     matcher = None
     sample_rate = 16000
     pitch_extractor = None
+    pcm_chunks = []
 
     try:
         while True:
             message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                return
+
             if message.get("text") is not None:
                 payload = _parse_json_message(message["text"])
                 msg_type = payload.get("type")
@@ -90,6 +98,7 @@ async def realtime_match(websocket: WebSocket) -> None:
                             "catalog_id": catalog_id,
                             "sample_rate": sample_rate,
                             "feature_mode": "pitch_midi",
+                            "asr_mode": asr_engine.status,
                         }
                     )
                     continue
@@ -106,8 +115,20 @@ async def realtime_match(websocket: WebSocket) -> None:
                     matcher.append_features([float(value) for value in values])
                     continue
 
+                if msg_type in {"asr_transcript", "asr_text"}:
+                    text = payload.get("text", "")
+                    if not isinstance(text, str):
+                        await websocket.send_json({"type": "error", "message": "ASR text must be a string"})
+                        continue
+                    matcher.set_transcript(text)
+                    continue
+
                 if msg_type == "end":
                     end_received = perf_counter()
+                    if matcher.transcript is None:
+                        transcription = asr_engine.transcribe_pcm16(pcm_chunks, sample_rate)
+                        if transcription is not None:
+                            matcher.set_transcript(transcription.text)
                     result = matcher.finalize()
                     await websocket.send_json(
                         _result_payload(
@@ -117,6 +138,7 @@ async def realtime_match(websocket: WebSocket) -> None:
                             session_started=session_started,
                             host=_http_origin(websocket),
                             feature_count=matcher.feature_count,
+                            asr_status=asr_engine.last_detail or asr_engine.status,
                         )
                     )
                     await websocket.close()
@@ -134,6 +156,7 @@ async def realtime_match(websocket: WebSocket) -> None:
                     pitch_extractor = StreamingPitchExtractor(sample_rate=sample_rate)
                 features = pitch_extractor.append_pcm16(message["bytes"])
                 matcher.append_features(features)
+                pcm_chunks.append(message["bytes"])
             else:
                 await websocket.send_json({"type": "error", "message": "unsupported websocket message"})
 
@@ -172,6 +195,7 @@ def _result_payload(
     session_started: float,
     host: str,
     feature_count: int,
+    asr_status: str,
 ) -> Dict[str, Any]:
     sent_at = perf_counter()
     reply_url = None
@@ -196,6 +220,10 @@ def _result_payload(
         "reply_audio_url": reply_url,
         "prompt_audio_url": prompt_url,
         "lyrics_file": result.lyrics_file,
+        "asr_transcript": result.asr_transcript,
+        "asr_status": asr_status,
+        "recall_source": result.recall_source,
+        "candidate_count": result.candidate_count,
         "feature_count": feature_count,
         "latency_ms": {
             "stream_duration": int((end_received - stream_started) * 1000),

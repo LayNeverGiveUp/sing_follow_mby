@@ -134,3 +134,39 @@ def normalize_features(values: Iterable[float]) -> List[float]:
         return []
     mean = sum(seq) / len(seq)
     return [value - mean for value in seq]
+
+
+def stabilize_pitch_contour(values: Iterable[float]) -> List[float]:
+    """Reduce common pitch-tracker artifacts before melody matching.
+
+    The demo extractor often sees octave/harmonic spikes in original-song
+    prompts with accompaniment. Human microphone input is usually smoother, so
+    matching raw contours makes those reference spikes count as melody. This
+    keeps the broad contour but removes isolated jumps and light jitter.
+    """
+    seq = [float(value) for value in values if 35.0 <= float(value) <= 90.0]
+    if len(seq) < 3:
+        return seq
+
+    repaired = seq[:]
+    for index in range(1, len(seq) - 1):
+        previous_value = seq[index - 1]
+        value = seq[index]
+        next_value = seq[index + 1]
+        if (
+            abs(value - previous_value) > 10.0
+            and abs(value - next_value) > 10.0
+            and abs(previous_value - next_value) < 6.0
+        ):
+            repaired[index] = (previous_value + next_value) / 2.0
+
+    if len(repaired) < 5:
+        return repaired
+
+    smoothed: List[float] = []
+    for index in range(len(repaired)):
+        start = max(0, index - 1)
+        end = min(len(repaired), index + 2)
+        window = sorted(repaired[start:end])
+        smoothed.append(window[len(window) // 2])
+    return smoothed

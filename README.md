@@ -12,6 +12,13 @@ Low-latency demo service for recognizing a short sung phrase and returning a pre
 
 The current matcher is intentionally deterministic and demo-friendly. It supports JSON `demo_features` messages so the end-to-end service can be tested without a real feature extraction pipeline. Binary chunks are accepted and converted into coarse energy features as a placeholder.
 
+For the Mao Buyi demo path, matching now uses a two-stage flow:
+
+1. ASR text recall narrows lyric candidates when a transcript is available.
+2. DTW reranks those candidates with audio features. Without ASR text, DTW falls back to the full catalog.
+
+Audio reranking uses stabilized pitch contour plus interval contour, not raw pitch alone.
+
 ## Setup
 
 ```bash
@@ -51,6 +58,28 @@ Mao Buyi catalog demo:
 python scripts/ws_mao_demo_client.py
 MAO_DEMO_SONG=不染 python scripts/ws_mao_demo_client.py
 python scripts/ws_pcm_demo_client.py
+```
+
+Optional backend ASR with Volcengine:
+
+```bash
+export VOLCENGINE_ASR_API_KEY="..."
+export VOLCENGINE_ASR_PUBLIC_BASE_URL="https://your-public-host.example.com"
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The backend uses Volcengine's AUC bigmodel HTTP endpoint. This API accepts a public audio URL, so local browser recordings are saved under `/static/asr/` and submitted as `${VOLCENGINE_ASR_PUBLIC_BASE_URL}/static/asr/<file>.wav`. Do not commit secrets; keep them in your shell environment. `VOLCENGINE_ASR_RESOURCE_ID` defaults to `volc.seedasr.auc`.
+
+Optional local fallback ASR:
+
+```bash
+SONG_FOLLOWUP_ASR_MODEL=/path/to/local/faster-whisper-model uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+If backend ASR is unset, the browser demo can still send client-side Web Speech transcripts when the browser supports it. The service also accepts WebSocket transcript messages:
+
+```json
+{"type": "asr_transcript", "text": "背上所有的梦与想"}
 ```
 
 ## WebSocket Protocol
@@ -155,6 +184,20 @@ Put licensed full-song audio files here:
 
 ```text
 data/source_audio/mao_buyi_v1/
+```
+
+If those files contain accompaniment, put separated vocal tracks here:
+
+```text
+data/source_vocals/mao_buyi_v1/
+```
+
+Accepted filenames match song IDs or Chinese song names. When separated vocals are present, the catalog builder extracts matching features from vocals but still cuts browser prompt clips from the original source audio.
+
+The builder can also call Demucs if it is installed separately:
+
+```bash
+python tools/build_catalog.py --separation-mode demucs
 ```
 
 Supported extensions:
