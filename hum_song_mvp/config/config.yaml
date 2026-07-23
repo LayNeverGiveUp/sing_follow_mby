@@ -1,0 +1,72 @@
+audio:
+  sample_rate: 16000
+  trim_top_db: 35
+pitch:
+  hop_seconds: 0.025
+  frame_length: 1024
+  fmin_hz: 80.0
+  fmax_hz: 900.0
+  min_confidence: 0.20
+  min_midi: 36.0
+  max_midi: 96.0
+  max_gap_frames: 2
+  median_filter_frames: 3
+  octave_jump_semitones: 8.0
+  local_median_frames: 61
+matching:
+  algorithm: hybrid_phrase
+  relative_pitch_weight: 0.70
+  delta_pitch_weight: 0.15
+  voiced_weight: 0.10
+  onset_weight: 0.05
+  pitch_distance_cap: 6.0
+  octave_penalty: 0.8
+  voiced_mismatch_penalty: 1.0
+  silence_silence_penalty: 0.04
+  min_speed_ratio: 0.50
+  max_speed_ratio: 2.00
+phrase_matching:
+  contour_points: 72
+  pitch_weight: 0.80
+  slope_weight: 0.20
+  range_weight: 0.10
+  pitch_distance_cap: 6.0
+  slope_distance_cap: 3.0
+  range_difference_cap: 8.0
+  octave_penalty: 1.0
+  band_radius: 0.18
+  segment_coverages: [1.0, 0.8, 0.65]
+  segmental_min_voiced_seconds: 1.50
+  partial_coverage_penalty: 0.50
+  min_query_voiced_seconds: 0.60
+  max_cost: 1.40
+  min_standalone_margin: 0.10
+  min_trusted_frame_coverage: 0.60
+  strong_frame_coverage: 0.80
+  min_trusted_frame_voiced_seconds: 0.75
+confidence:
+  # Exploratory two-song demo: favor returning a candidate over rejecting it.
+  # Browser recordings often contain breath and trailing silence. This is an
+  # exploratory two-song demo, so allow a short but clearly melodic phrase.
+  min_voiced_seconds: 1.5
+  min_pitch_range_semitones: 1.0
+  min_paired_voiced_seconds: 0.75
+  min_query_voiced_coverage: 0.45
+  absolute_cost_threshold: 2.10
+  # Keep Top-1 ordering, but do not reject same-singer phrases solely on a tiny margin.
+  margin_threshold: 0.01
+  score_cost_scale: 2.2
+lyric_mapping:
+  # Treat a match ending just after a timestamp boundary as the preceding line.
+  # This prevents a complete current line from skipping directly to its next line.
+  end_boundary_tolerance_seconds: 0.25
+lyric_segmentation:
+  # A lyric line's LRC end can include a long instrumental break.  Derive its
+  # playable end from the last sustained voiced F0 run instead.
+  min_voiced_run_seconds: 0.20
+  max_intra_phrase_silence_seconds: 0.75
+  vocal_end_padding_seconds: 0.20
+  min_nominal_line_duration_to_trim_seconds: 10.0
+  min_trailing_silence_to_trim_seconds: 2.0
+separator:
+  model: model_bs_roformer_ep_317_sdr_12.9755.ckpt

@@ -1,0 +1,7 @@
+# Optional: needed only by --separation-mode audio-separator.
+audio-separator>=0.30
+onnxruntime>=1.19
+# Supplies ffmpeg on machines where a system ffmpeg is unavailable.
+imageio-ffmpeg>=0.6
+# Optional alternative selected by --separation-mode demucs.
+demucs>=4.0

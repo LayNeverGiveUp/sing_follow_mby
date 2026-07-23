@@ -1,1 +1,0 @@
-"""Catalog and matching logic."""

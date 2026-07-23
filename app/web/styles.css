@@ -102,6 +102,10 @@ h2 {
   margin: 24px 0 18px;
 }
 
+.control-grid.single-field {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -199,39 +203,6 @@ button:disabled {
   margin: 24px 0 16px;
 }
 
-.asr-panel {
-  border-top: 1px solid var(--line);
-  margin: 4px 0 18px;
-  padding-top: 18px;
-}
-
-.asr-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 96px;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.asr-text {
-  min-height: 82px;
-}
-
-.asr-span {
-  grid-column: 1 / -1;
-}
-
-.asr-panel .kv strong {
-  font-size: 14px;
-}
-
-#asrStatus,
-#recallSource {
-  color: #33414b;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
 
 .kv {
   border: 1px solid var(--line);
@@ -305,10 +276,6 @@ pre {
 
   .control-grid,
   .result-grid,
-  .asr-grid {
-    grid-template-columns: 1fr;
-  }
-
   h1 {
     font-size: 24px;
   }

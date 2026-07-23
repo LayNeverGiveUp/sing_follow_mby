@@ -5,45 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Song Followup API Demo</title>
     <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="./styles.css?v=asr-layout-2" />
+    <link rel="stylesheet" href="./styles.css?v=hum-mvp-2" />
   </head>
   <body>
     <main class="shell">
       <section class="panel">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Realtime Match</p>
+            <p class="eyebrow">Hum Song MVP</p>
             <h1>毛不易歌曲接唱测试台</h1>
           </div>
           <div class="status" id="connectionStatus">Idle</div>
         </header>
 
-        <div class="control-grid">
+        <div class="control-grid single-field">
           <label class="field">
             <span>WebSocket URL</span>
             <input id="wsUrl" value="ws://127.0.0.1:8000/v1/realtime-match" />
           </label>
-
-          <label class="field">
-            <span>Catalog</span>
-            <input id="catalogId" value="mao_buyi_v1" />
-          </label>
         </div>
 
         <div class="actions">
-          <button id="sendButton" class="primary">发送测试旋律</button>
-          <button id="randomPromptButton" class="secondary">随机播放一句</button>
-          <button id="recordButton" class="secondary">开始录音</button>
+          <button id="vocalTestButton" class="primary">一键干声测试</button>
+          <button id="recordButton" class="secondary">开始录音（4–8 秒）</button>
           <button id="clearButton" class="secondary">清空结果</button>
         </div>
 
+        <section class="recording-playback user-recording">
+          <div>
+            <p class="eyebrow">Your Recording</p>
+            <h2>用户清唱 / 哼唱</h2>
+          </div>
+          <p class="hint" id="recordingHint">点击“开始录音”，唱或哼 4–8 秒，再点击“停止并识别”。</p>
+          <audio id="recordedAudio" controls></audio>
+        </section>
+
         <section class="recording-playback">
           <div>
-            <p class="eyebrow">Recorded Audio</p>
-            <h2>最近录音</h2>
+            <p class="eyebrow">Selected Prompt</p>
+            <h2>抽中这一句</h2>
           </div>
-          <audio id="recordedAudio" controls></audio>
-          <p class="hint" id="recordingHint">录音结束后会出现在这里。</p>
+          <p class="hint" id="queryLabel">识别成功后显示当前句。</p>
+          <audio id="queryAudio" controls></audio>
+        </section>
+
+        <section class="recording-playback">
+          <div>
+            <p class="eyebrow">Next Line</p>
+            <h2>下一句接唱</h2>
+          </div>
+          <p class="hint" id="nextLabel">识别成功后显示下一句。</p>
+          <audio id="nextAudio" controls></audio>
         </section>
       </section>
 
@@ -73,41 +85,20 @@
             <strong id="confidence">--</strong>
           </div>
           <div class="kv">
-            <span>Line</span>
+            <span>当前句 → 下一句</span>
             <strong id="matchedLine">--</strong>
           </div>
         </div>
 
-        <section class="asr-panel">
-          <div>
-            <p class="eyebrow">ASR</p>
-            <h2>语音识别</h2>
-          </div>
-          <div class="asr-grid">
-            <div class="kv asr-text asr-span">
-              <span>Transcript</span>
-              <strong id="asrTranscript">等待识别</strong>
-            </div>
-            <div class="kv">
-              <span>Recall</span>
-              <strong id="recallSource">--</strong>
-            </div>
-            <div class="kv">
-              <span>Status</span>
-              <strong id="asrStatus">--</strong>
-            </div>
-            <div class="kv">
-              <span>Candidates</span>
-              <strong id="candidateCount">--</strong>
-            </div>
-          </div>
+        <section class="diagnostic-log">
+          <p class="eyebrow">Diagnostic Log</p>
+          <pre id="eventLog">等待操作。</pre>
         </section>
 
-        <audio id="replyAudio" controls></audio>
         <pre id="rawJson">{}</pre>
       </section>
     </main>
 
-    <script src="./app.js?v=asr-layout-2"></script>
+    <script src="./app.js?v=hum-mvp-13"></script>
   </body>
 </html>

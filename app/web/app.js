@@ -1,27 +1,19 @@
-const fallbackSongs = [
-  { name: "消愁", id: "mao_buyi_xiaochou", lineId: "demo_segment_1", text: "消愁 - demo segment", promptAudioUrl: "/static/prompts/mao_buyi_v1/mao_buyi_xiaochou_prompt.wav", features: [60, 62, 63, 67, 65, 63, 62, 60] },
-  { name: "像我这样的人", id: "mao_buyi_like_me", lineId: "demo_segment_1", text: "像我这样的人 - demo segment", promptAudioUrl: "/static/prompts/mao_buyi_v1/mao_buyi_like_me_prompt.wav", features: [64, 64, 65, 67, 65, 64, 62, 60] },
-  { name: "盛夏", id: "mao_buyi_summer", lineId: "demo_segment_1", text: "盛夏 - demo segment", promptAudioUrl: "/static/prompts/mao_buyi_v1/mao_buyi_summer_prompt.wav", features: [55, 60, 62, 64, 67, 64, 62, 60] },
-  { name: "不染", id: "mao_buyi_unstained", lineId: "demo_segment_1", text: "不染 - demo segment", promptAudioUrl: "/static/prompts/mao_buyi_v1/mao_buyi_unstained_prompt.wav", features: [67, 69, 70, 72, 70, 69, 67, 65] },
-];
-
 const state = {
-  songs: fallbackSongs,
-  selected: fallbackSongs[0],
   running: false,
   recorder: null,
-  recordedUrl: null,
-  speechRecognition: null,
-  asrTranscript: "",
+  testItems: null,
+  remainingTestItems: [],
+  selectedTest: null,
+  recordedAudioUrl: null,
+  recordingStartedAt: null,
+  recordingTimer: null,
 };
 
 const els = {
-  sendButton: document.querySelector("#sendButton"),
-  randomPromptButton: document.querySelector("#randomPromptButton"),
+  vocalTestButton: document.querySelector("#vocalTestButton"),
   recordButton: document.querySelector("#recordButton"),
   clearButton: document.querySelector("#clearButton"),
   wsUrl: document.querySelector("#wsUrl"),
-  catalogId: document.querySelector("#catalogId"),
   connectionStatus: document.querySelector("#connectionStatus"),
   resultTitle: document.querySelector("#resultTitle"),
   endToResult: document.querySelector("#endToResult"),
@@ -29,18 +21,22 @@ const els = {
   songId: document.querySelector("#songId"),
   confidence: document.querySelector("#confidence"),
   matchedLine: document.querySelector("#matchedLine"),
-  asrTranscript: document.querySelector("#asrTranscript"),
-  recallSource: document.querySelector("#recallSource"),
-  asrStatus: document.querySelector("#asrStatus"),
-  candidateCount: document.querySelector("#candidateCount"),
   rawJson: document.querySelector("#rawJson"),
-  replyAudio: document.querySelector("#replyAudio"),
+  queryAudio: document.querySelector("#queryAudio"),
+  nextAudio: document.querySelector("#nextAudio"),
+  queryLabel: document.querySelector("#queryLabel"),
+  nextLabel: document.querySelector("#nextLabel"),
   recordedAudio: document.querySelector("#recordedAudio"),
   recordingHint: document.querySelector("#recordingHint"),
+  eventLog: document.querySelector("#eventLog"),
 };
 
-function renderSongs() {
-  // Catalog segments stay internal; the UI intentionally does not render each slice.
+function logEvent(message, detail) {
+  const timestamp = new Date().toLocaleTimeString();
+  const suffix = detail === undefined ? "" : ` ${typeof detail === "string" ? detail : JSON.stringify(detail)}`;
+  const lines = els.eventLog.textContent === "等待操作。" ? [] : els.eventLog.textContent.split("\n");
+  lines.push(`[${timestamp}] ${message}${suffix}`);
+  els.eventLog.textContent = lines.slice(-12).join("\n");
 }
 
 function setStatus(label, mode = "") {
@@ -55,37 +51,36 @@ function clearResult() {
   els.songId.textContent = "--";
   els.confidence.textContent = "--";
   els.matchedLine.textContent = "--";
-  els.asrTranscript.textContent = "等待识别";
-  els.recallSource.textContent = "--";
-  els.asrStatus.textContent = "--";
-  els.candidateCount.textContent = "--";
   els.rawJson.textContent = "{}";
-  els.replyAudio.removeAttribute("src");
-  els.replyAudio.load();
+  els.eventLog.textContent = "等待操作。";
   setStatus("Idle");
 }
 
-function updateResult(result) {
-  els.resultTitle.textContent = result.matched ? result.song_name || "Matched" : "未匹配";
-  els.endToResult.textContent = `${result.latency_ms?.end_to_result ?? "--"}ms`;
-  els.matched.textContent = String(result.matched);
-  els.songId.textContent = result.song_id || "--";
-  els.confidence.textContent = typeof result.confidence === "number" ? result.confidence.toFixed(4) : "--";
-  els.matchedLine.textContent = result.matched_line || "--";
-  els.asrTranscript.textContent = result.asr_transcript || "未返回识别文本";
-  els.recallSource.textContent = result.recall_source || "--";
-  els.asrStatus.textContent = result.asr_status || "--";
-  els.candidateCount.textContent = typeof result.candidate_count === "number" ? String(result.candidate_count) : "--";
-  els.rawJson.textContent = JSON.stringify(result, null, 2);
-
-  if (result.reply_audio_url) {
-    els.replyAudio.src = result.reply_audio_url;
-    els.replyAudio.load();
-  }
+function clearRecordedAudio() {
+  if (state.recordedAudioUrl) URL.revokeObjectURL(state.recordedAudioUrl);
+  state.recordedAudioUrl = null;
+  els.recordedAudio.removeAttribute("src");
+  els.recordedAudio.load();
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+function updateResult(result) {
+  const accepted = Boolean(result.accepted ?? result.matched);
+  els.resultTitle.textContent = accepted ? result.song_name || result.song_id || "已匹配" : "未匹配";
+  els.endToResult.textContent = `${result.latency_ms?.end_to_result ?? "--"}ms`;
+  els.matched.textContent = String(accepted);
+  els.songId.textContent = result.song_id || "--";
+  const score = result.score ?? result.confidence;
+  els.confidence.textContent = typeof score === "number" ? score.toFixed(4) : "--";
+  const current = result.current_lyric_text || result.matched_line || "--";
+  const next = result.next_lyric_text ? ` → ${result.next_lyric_text}` : "";
+  els.matchedLine.textContent = `${current}${next}`;
+  els.rawJson.textContent = JSON.stringify(result, null, 2);
+}
+
+function setButtonsDisabled(disabled) {
+  els.vocalTestButton.disabled = disabled;
+  els.clearButton.disabled = disabled;
+  if (!state.recorder) els.recordButton.disabled = disabled;
 }
 
 function floatToPcm16(float32) {
@@ -98,38 +93,14 @@ function floatToPcm16(float32) {
   return buffer;
 }
 
-function midiToHz(midi) {
-  return 440 * 2 ** ((midi - 69) / 12);
-}
-
-function synthMelodyPcmChunks(features, sampleRate = 16000, noteMs = 320) {
-  const chunks = [];
-  const samplesPerNote = Math.floor((sampleRate * noteMs) / 1000);
-  const amplitude = 0.32;
-
-  for (const midi of features) {
-    const freq = midiToHz(midi);
-    const float32 = new Float32Array(samplesPerNote);
-    for (let index = 0; index < samplesPerNote; index += 1) {
-      const fadeIn = Math.min(1, index / Math.max(1, sampleRate * 0.025));
-      const fadeOut = Math.min(1, (samplesPerNote - index) / Math.max(1, sampleRate * 0.035));
-      const envelope = Math.min(fadeIn, fadeOut);
-      float32[index] = amplitude * envelope * Math.sin((2 * Math.PI * freq * index) / sampleRate);
-    }
-    chunks.push(floatToPcm16(float32));
-  }
-
-  return chunks;
-}
-
-function buildWavBlob(pcmChunks, sampleRate) {
-  const dataLength = pcmChunks.reduce((total, chunk) => total + chunk.byteLength, 0);
-  const wav = new ArrayBuffer(44 + dataLength);
+function pcmChunksToWav(chunks, sampleRate) {
+  const byteLength = chunks.reduce((total, chunk) => total + chunk.byteLength, 0);
+  const wav = new ArrayBuffer(44 + byteLength);
   const view = new DataView(wav);
-  writeAscii(view, 0, "RIFF");
-  view.setUint32(4, 36 + dataLength, true);
-  writeAscii(view, 8, "WAVE");
-  writeAscii(view, 12, "fmt ");
+  const write = (offset, value) => [...value].forEach((char, index) => view.setUint8(offset + index, char.charCodeAt(0)));
+  write(0, "RIFF");
+  view.setUint32(4, 36 + byteLength, true);
+  write(8, "WAVEfmt ");
   view.setUint32(16, 16, true);
   view.setUint16(20, 1, true);
   view.setUint16(22, 1, true);
@@ -137,368 +108,252 @@ function buildWavBlob(pcmChunks, sampleRate) {
   view.setUint32(28, sampleRate * 2, true);
   view.setUint16(32, 2, true);
   view.setUint16(34, 16, true);
-  writeAscii(view, 36, "data");
-  view.setUint32(40, dataLength, true);
-
+  write(36, "data");
+  view.setUint32(40, byteLength, true);
   let offset = 44;
-  for (const chunk of pcmChunks) {
+  for (const chunk of chunks) {
     new Uint8Array(wav, offset, chunk.byteLength).set(new Uint8Array(chunk));
     offset += chunk.byteLength;
   }
   return new Blob([wav], { type: "audio/wav" });
 }
 
-function writeAscii(view, offset, value) {
-  for (let index = 0; index < value.length; index += 1) {
-    view.setUint8(offset + index, value.charCodeAt(index));
-  }
+function stopRecordingTimer() {
+  if (state.recordingTimer) window.clearInterval(state.recordingTimer);
+  state.recordingTimer = null;
 }
 
-function setRecordedAudio(pcmChunks, sampleRate) {
-  if (state.recordedUrl) {
-    URL.revokeObjectURL(state.recordedUrl);
-  }
-  if (!pcmChunks.length) {
-    els.recordedAudio.removeAttribute("src");
-    els.recordedAudio.load();
-    els.recordingHint.textContent = "没有录到可回放音频。";
-    return;
-  }
-  const blob = buildWavBlob(pcmChunks, sampleRate);
-  state.recordedUrl = URL.createObjectURL(blob);
-  els.recordedAudio.src = state.recordedUrl;
-  els.recordedAudio.load();
-  els.recordingHint.textContent = `已保存最近一次录音，约 ${(blob.size / 1024).toFixed(1)} KB。`;
-}
-
-function setRecordedAudioUrl(url, hint) {
-  if (state.recordedUrl) {
-    URL.revokeObjectURL(state.recordedUrl);
-    state.recordedUrl = null;
-  }
-  els.recordedAudio.src = url;
-  els.recordedAudio.load();
-  els.recordingHint.textContent = hint;
-}
-
-function startBrowserAsr() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  state.asrTranscript = "";
-  if (!SpeechRecognition) {
-    return null;
-  }
-
-  const recognition = new SpeechRecognition();
-  recognition.lang = "zh-CN";
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.onresult = (event) => {
-    let text = "";
-    for (let index = 0; index < event.results.length; index += 1) {
-      text += event.results[index][0]?.transcript || "";
-    }
-    state.asrTranscript = text.trim();
-  };
-  recognition.onerror = () => {
-    state.speechRecognition = null;
-  };
-
-  try {
-    recognition.start();
-    state.speechRecognition = recognition;
-    return recognition;
-  } catch (_) {
-    return null;
-  }
-}
-
-function stopBrowserAsr() {
-  if (!state.speechRecognition) return;
-  try {
-    state.speechRecognition.stop();
-  } catch (_) {
-    // Ignore browsers that already stopped recognition.
-  }
-  state.speechRecognition = null;
-}
-
-async function waitForOpen(socket) {
+function waitForOpen(socket) {
   return new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });
-    socket.addEventListener("error", reject, { once: true });
+    socket.addEventListener("error", () => reject(new Error("WebSocket 连接失败")), { once: true });
   });
 }
 
-async function waitForResult(socket, endSentAt, started) {
+function waitForResult(socket, endSentAt) {
   return new Promise((resolve, reject) => {
     socket.addEventListener("message", (event) => {
       const payload = JSON.parse(event.data);
+      if (payload.type === "ack") {
+        logEvent("服务已接收录音流", payload);
+        return;
+      }
+      if (payload.type === "error") reject(new Error(payload.message));
       if (payload.type === "result") {
-        payload.client_latency_ms = {
-          end_to_result: Math.round(performance.now() - endSentAt),
-          total: Math.round(performance.now() - started),
-        };
+        payload.client_latency_ms = Math.round(performance.now() - endSentAt);
         resolve(payload);
       }
     });
-    socket.addEventListener("error", reject, { once: true });
-    socket.addEventListener("close", () => reject(new Error("socket closed before result")), { once: true });
+    socket.addEventListener("error", () => reject(new Error("WebSocket 通信失败")), { once: true });
+    socket.addEventListener("close", () => reject(new Error("服务在返回结果前关闭连接")), { once: true });
   });
 }
 
-async function sendDemo() {
+function audioContext() {
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) throw new Error("当前浏览器不支持 Web Audio API");
+  return new Context({ sampleRate: 16000 });
+}
+
+async function selectRandomTest() {
+  if (!state.testItems) {
+    const response = await fetch("/v1/hum-mvp/test-queries", { cache: "no-store" });
+    if (!response.ok) throw new Error("测试句库加载失败");
+    const payload = await response.json();
+    state.testItems = payload.items || [];
+  }
+  if (!state.testItems.length) throw new Error("没有可用的带下一句测试素材");
+  if (!state.remainingTestItems.length) {
+    state.remainingTestItems = shuffle(state.testItems);
+  }
+  state.selectedTest = state.remainingTestItems.pop();
+  const item = state.selectedTest;
+  els.queryAudio.src = item.query_audio_url;
+  els.queryAudio.load();
+  els.queryLabel.textContent = `抽中输入句：${item.song_id}｜${item.current_lyric_text}`;
+  els.nextAudio.removeAttribute("src");
+  els.nextAudio.load();
+  els.nextLabel.textContent = "等待识别后确定下一句…";
+  return item;
+}
+
+function shuffle(items) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const random = new Uint32Array(1);
+    crypto.getRandomValues(random);
+    const swapIndex = random[0] % (index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
+function showRecognitionAudio(result) {
+  if (!result.accepted || !result.song_id || !Number.isInteger(result.current_lyric_index)) {
+    els.nextAudio.removeAttribute("src");
+    els.nextAudio.load();
+    els.nextLabel.textContent = "未识别成功，因此不播放下一句。";
+    return;
+  }
+  const song = encodeURIComponent(result.song_id);
+  const lineUrl = (index) => `/static/queries/mao_buyi_v1/${song}/line_${String(index).padStart(3, "0")}.wav`;
+  // The upper player remains the randomly selected input clip. Recognition
+  // results only determine the next-line player and the result panel.
+  if (Number.isInteger(result.next_lyric_index)) {
+    els.nextAudio.src = lineUrl(result.next_lyric_index);
+    els.nextAudio.load();
+    els.nextLabel.textContent = `识别下一句：${result.next_lyric_text || "--"}`;
+  } else {
+    els.nextAudio.removeAttribute("src");
+    els.nextAudio.load();
+    els.nextLabel.textContent = "识别结果已是最后一句，没有下一句。";
+  }
+}
+
+async function sendPcmForMvp(pcmChunks, sampleRate) {
+  const socket = new WebSocket(els.wsUrl.value.trim());
+  await waitForOpen(socket);
+  socket.send(JSON.stringify({ type: "start", catalog_id: "mao_buyi_v1", matcher_mode: "hum_song_mvp", sample_rate: sampleRate, format: "pcm_s16le" }));
+  for (const chunk of pcmChunks) socket.send(chunk);
+  logEvent("已发送 PCM", { sample_rate: sampleRate, chunks: pcmChunks.length, bytes: pcmChunks.reduce((total, chunk) => total + chunk.byteLength, 0) });
+  const endSentAt = performance.now();
+  socket.send(JSON.stringify({ type: "end" }));
+  try {
+    return await waitForResult(socket, endSentAt);
+  } finally {
+    if (socket.readyState === WebSocket.OPEN) socket.close();
+  }
+}
+
+async function sendVocalTest() {
   if (state.running) return;
   state.running = true;
-  els.sendButton.disabled = true;
-  els.randomPromptButton.disabled = true;
-  els.clearButton.disabled = true;
+  setButtonsDisabled(true);
   clearResult();
-  setStatus("Connecting", "active");
-
-  const socket = new WebSocket(els.wsUrl.value.trim());
-  const started = performance.now();
-
+  let context;
   try {
-    await waitForOpen(socket);
-    setStatus("Streaming", "active");
-
-    socket.send(
-      JSON.stringify({
-        type: "start",
-        catalog_id: els.catalogId.value.trim() || "mao_buyi_v1",
-        sample_rate: 16000,
-        format: "pcm_s16le",
-      })
-    );
-
-    for (let offset = 0; offset < state.selected.features.length; offset += 3) {
-      const chunk = state.selected.features.slice(offset, offset + 3);
-      socket.send(JSON.stringify({ type: "demo_features", values: chunk }));
-      await sleep(50);
-    }
-
-    const endSentAt = performance.now();
-    socket.send(JSON.stringify({ type: "end" }));
-    const result = await waitForResult(socket, endSentAt, started);
+    setStatus("Loading test vocal", "active");
+    const selected = await selectRandomTest();
+    els.queryLabel.textContent = `抽中输入句：${selected.song_id}｜${selected.current_lyric_text}（正在识别…）`;
+    const response = await fetch(selected.query_audio_url, { cache: "no-store" });
+    if (!response.ok) throw new Error("未找到干声测试素材");
+    context = audioContext();
+    const decoded = await context.decodeAudioData(await response.arrayBuffer());
+    const mono = decoded.getChannelData(0);
+    const chunks = [];
+    for (let offset = 0; offset < mono.length; offset += 2048) chunks.push(floatToPcm16(mono.subarray(offset, offset + 2048)));
+    setStatus("Matching", "active");
+    const result = await sendPcmForMvp(chunks, context.sampleRate);
+    logEvent("识别结果", { accepted: result.accepted, reason: result.reason, diagnostics: result.diagnostics });
     updateResult(result);
+    showRecognitionAudio(result);
     setStatus("Done", "active");
   } catch (error) {
-    setStatus("Error", "error");
-    els.resultTitle.textContent = "连接失败";
+    els.resultTitle.textContent = "测试失败";
     els.rawJson.textContent = String(error?.message || error);
+    logEvent("干声测试失败", String(error?.message || error));
+    els.queryLabel.textContent = "干声测试未能完成，请查看下方错误信息。";
+    setStatus("Error", "error");
   } finally {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.close();
-    }
+    if (context) await context.close();
     state.running = false;
-    els.sendButton.disabled = false;
-    els.randomPromptButton.disabled = false;
-    els.clearButton.disabled = false;
-  }
-}
-
-async function loadCatalog() {
-  const catalogId = els.catalogId.value.trim() || "mao_buyi_v1";
-  try {
-    const response = await fetch(`/v1/catalog/${encodeURIComponent(catalogId)}`);
-    if (!response.ok) throw new Error(`catalog HTTP ${response.status}`);
-    const payload = await response.json();
-    state.songs = payload.songs.map((item) => ({
-      id: item.song_id,
-      name: item.song_name,
-      lineId: item.line_id,
-      text: item.text,
-      promptAudioUrl: item.prompt_audio_url,
-      features: item.features,
-    }));
-    state.selected = state.songs[0] || fallbackSongs[0];
-    renderSongs();
-  } catch (error) {
-    state.songs = fallbackSongs;
-    state.selected = fallbackSongs[0];
-    renderSongs();
-    els.recordingHint.textContent = `曲库加载失败，使用 fallback demo：${error.message}`;
-  }
-}
-
-async function playRandomPrompt() {
-  if (state.running) return;
-  const song = state.songs[Math.floor(Math.random() * state.songs.length)];
-  state.selected = song;
-  renderSongs();
-  setStatus("Prompt");
-
-  let usedOriginal = false;
-  try {
-    const response = await fetch(song.promptAudioUrl, { method: "HEAD" });
-    usedOriginal = response.ok;
-  } catch (_) {
-    usedOriginal = false;
-  }
-
-  if (usedOriginal) {
-    setRecordedAudioUrl(song.promptAudioUrl, `随机原唱片段：${song.name} / ${song.text}。听完后可以点“开始录音”接唱。`);
-  } else {
-    const sampleRate = 16000;
-    const pcmChunks = synthMelodyPcmChunks(song.features, sampleRate);
-    setRecordedAudio(pcmChunks, sampleRate);
-    els.recordingHint.textContent = `未找到授权原唱片段，已播放合成提示：${song.name} / ${song.text}。`;
-  }
-
-  try {
-    await els.recordedAudio.play();
-  } catch (_) {
-    // Some browsers still block autoplay; the user can press the audio control.
+    setButtonsDisabled(false);
   }
 }
 
 async function startRecording() {
   if (state.running || state.recorder) return;
   state.running = true;
-  els.sendButton.disabled = true;
-  els.randomPromptButton.disabled = true;
-  els.clearButton.disabled = true;
+  setButtonsDisabled(true);
+  els.recordButton.disabled = false;
   els.recordButton.textContent = "停止并识别";
   clearResult();
-  setStatus("Connecting", "active");
-
-  const socket = new WebSocket(els.wsUrl.value.trim());
-  const started = performance.now();
-  let audioContext = null;
-  let mediaStream = null;
-  let processor = null;
-  let source = null;
-  const pcmChunks = [];
-
+  clearRecordedAudio();
+  let context;
+  let mediaStream;
+  let processor;
+  let source;
   try {
-    await waitForOpen(socket);
-
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1,
-      },
-    });
-
-    audioContext = new AudioContext({ sampleRate: 16000 });
-    source = audioContext.createMediaStreamSource(mediaStream);
-    processor = audioContext.createScriptProcessor(2048, 1, 1);
-    startBrowserAsr();
-
-    socket.send(
-      JSON.stringify({
-        type: "start",
-        catalog_id: els.catalogId.value.trim() || "mao_buyi_v1",
-        sample_rate: audioContext.sampleRate,
-        format: "pcm_s16le",
-      })
-    );
-
-    processor.onaudioprocess = (event) => {
-      if (socket.readyState !== WebSocket.OPEN) return;
-      const input = event.inputBuffer.getChannelData(0);
-      const pcm = floatToPcm16(input);
-      pcmChunks.push(pcm.slice(0));
-      socket.send(pcm);
-    };
-
+    // In normal office environments, browser voice processing produces a more
+    // usable recording than an unprocessed microphone signal.
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+    context = audioContext();
+    source = context.createMediaStreamSource(mediaStream);
+    processor = context.createScriptProcessor(2048, 1, 1);
+    const pcmChunks = [];
+    processor.onaudioprocess = (event) => pcmChunks.push(floatToPcm16(event.inputBuffer.getChannelData(0)).slice(0));
     source.connect(processor);
-    processor.connect(audioContext.destination);
+    // Keep ScriptProcessor alive without routing the microphone back to speakers.
+    const silentGain = context.createGain();
+    silentGain.gain.value = 0;
+    processor.connect(silentGain);
+    silentGain.connect(context.destination);
+    state.recorder = { context, mediaStream, processor, source, silentGain, pcmChunks };
+    state.recordingStartedAt = performance.now();
+    state.recordingTimer = window.setInterval(() => {
+      const seconds = ((performance.now() - state.recordingStartedAt) / 1000).toFixed(1);
+      els.recordingHint.textContent = `正在录音 ${seconds} 秒；建议录满 4–8 秒后点击“停止并识别”。`;
+    }, 100);
+    els.recordingHint.textContent = "正在请求麦克风…";
+    logEvent("开始录音", { sample_rate: context.sampleRate });
     setStatus("Recording", "active");
-
-    state.recorder = {
-      socket,
-      audioContext,
-      mediaStream,
-      processor,
-      source,
-      started,
-      pcmChunks,
-      sampleRate: audioContext.sampleRate,
-    };
   } catch (error) {
-    stopBrowserAsr();
     if (processor) processor.disconnect();
     if (source) source.disconnect();
-    if (mediaStream) {
-      mediaStream.getTracks().forEach((track) => track.stop());
-    }
-    if (audioContext) {
-      await audioContext.close();
-    }
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.close();
-    }
+    if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop());
+    if (context) await context.close();
     state.running = false;
-    state.recorder = null;
-    els.sendButton.disabled = false;
-    els.randomPromptButton.disabled = false;
-    els.clearButton.disabled = false;
+    setButtonsDisabled(false);
     els.recordButton.textContent = "开始录音";
-    setStatus("Error", "error");
+    els.recordingHint.textContent = "无法启动录音；请允许浏览器使用麦克风。";
+    logEvent("无法启动录音", String(error?.message || error));
     els.resultTitle.textContent = "录音失败";
     els.rawJson.textContent = String(error?.message || error);
+    setStatus("Error", "error");
   }
 }
 
 async function stopRecording() {
   const recorder = state.recorder;
   if (!recorder) return;
-
   state.recorder = null;
-  setStatus("Finalizing", "active");
+  stopRecordingTimer();
   els.recordButton.disabled = true;
-
   try {
     recorder.processor.disconnect();
     recorder.source.disconnect();
+    recorder.silentGain.disconnect();
     recorder.mediaStream.getTracks().forEach((track) => track.stop());
-    stopBrowserAsr();
-    await recorder.audioContext.close();
-    setRecordedAudio(recorder.pcmChunks, recorder.sampleRate);
-
-    const endSentAt = performance.now();
-    if (state.asrTranscript) {
-      recorder.socket.send(JSON.stringify({ type: "asr_transcript", text: state.asrTranscript }));
-    }
-    recorder.socket.send(JSON.stringify({ type: "end" }));
-    const result = await waitForResult(recorder.socket, endSentAt, recorder.started);
+    await recorder.context.close();
+    state.recordedAudioUrl = URL.createObjectURL(pcmChunksToWav(recorder.pcmChunks, recorder.context.sampleRate));
+    els.recordedAudio.src = state.recordedAudioUrl;
+    els.recordedAudio.load();
+    const recordedSeconds = ((performance.now() - state.recordingStartedAt) / 1000).toFixed(1);
+    els.recordingHint.textContent = `已录制 ${recordedSeconds} 秒，正在识别…`;
+    logEvent("停止录音", { duration_seconds: Number(recordedSeconds), chunks: recorder.pcmChunks.length });
+    setStatus("Matching", "active");
+    const result = await sendPcmForMvp(recorder.pcmChunks, recorder.context.sampleRate);
+    logEvent("识别结果", { accepted: result.accepted, reason: result.reason, diagnostics: result.diagnostics });
     updateResult(result);
-    const asrText = result.asr_transcript ? `ASR：${result.asr_transcript}` : `ASR 状态：${result.asr_status || "--"}`;
-    els.recordingHint.textContent = `${els.recordingHint.textContent} ${asrText}`;
+    showRecognitionAudio(result);
+    els.recordingHint.textContent = `已录制 ${recordedSeconds} 秒，识别完成。`;
     setStatus("Done", "active");
   } catch (error) {
-    setStatus("Error", "error");
     els.resultTitle.textContent = "识别失败";
     els.rawJson.textContent = String(error?.message || error);
+    logEvent("录音识别失败", String(error?.message || error));
+    els.recordingHint.textContent = "录音已保留，但识别失败；可播放检查后重试。";
+    setStatus("Error", "error");
   } finally {
-    if (recorder.socket.readyState === WebSocket.OPEN) {
-      recorder.socket.close();
-    }
     state.running = false;
-    els.sendButton.disabled = false;
-    els.randomPromptButton.disabled = false;
-    els.clearButton.disabled = false;
+    setButtonsDisabled(false);
     els.recordButton.disabled = false;
     els.recordButton.textContent = "开始录音";
+    state.recordingStartedAt = null;
   }
 }
 
-async function toggleRecording() {
-  if (state.recorder) {
-    await stopRecording();
-  } else {
-    await startRecording();
-  }
-}
-
-els.sendButton.addEventListener("click", sendDemo);
-els.randomPromptButton.addEventListener("click", playRandomPrompt);
-els.recordButton.addEventListener("click", toggleRecording);
+els.vocalTestButton.addEventListener("click", sendVocalTest);
+els.recordButton.addEventListener("click", () => (state.recorder ? stopRecording() : startRecording()));
 els.clearButton.addEventListener("click", clearResult);
-els.catalogId.addEventListener("change", loadCatalog);
-
 clearResult();
-loadCatalog();
