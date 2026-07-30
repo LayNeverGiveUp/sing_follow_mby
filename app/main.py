@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -11,13 +12,15 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.debug_capture import DebugCapture, capture_pcm16, write_capture_result
 from app.hum_recognizer import hum_mvp_recognizer
 from hum_song_mvp.src.dtw_matcher import warm_dtw
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
+DEBUG_RECORDINGS_DIR = Path(os.getenv("HUM_SONG_DEBUG_RECORDINGS_DIR", DATA_DIR / "debug_recordings"))
 app = FastAPI(title="Hum Song Follow-up MVP", version="0.2.0")
 app.mount("/static/queries", StaticFiles(directory=DATA_DIR / "queries"), name="queries")
 app.mount("/demo", StaticFiles(directory=BASE_DIR / "app" / "web", html=True), name="demo")
@@ -31,7 +34,11 @@ def warm_matcher_runtime() -> None:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "hum-song-followup-mvp"}
+    return {
+        "status": "ok",
+        "service": "hum-song-followup-mvp",
+        "lyrics_asr": hum_mvp_recognizer.lyrics_asr.status,
+    }
 
 
 @app.get("/v1/hum-mvp/test-queries")
@@ -91,6 +98,8 @@ async def realtime_match(websocket: WebSocket) -> None:
     sample_rate = 16000
     pcm_chunks: list[bytes] = []
     started = False
+    start_metadata: dict[str, Any] = {}
+    debug_capture: DebugCapture | None = None
     try:
         while True:
             message = await websocket.receive()
@@ -116,14 +125,39 @@ async def realtime_match(websocket: WebSocket) -> None:
                     continue
                 sample_rate = int(payload.get("sample_rate", 16000))
                 pcm_chunks = []
+                start_metadata = {
+                    "input_source": str(payload.get("input_source", "unknown"))[:64],
+                    "catalog_id": str(payload.get("catalog_id", ""))[:128],
+                    "expected_song_id": payload.get("expected_song_id"),
+                    "expected_lyric_index": payload.get("expected_lyric_index"),
+                    "user_agent": websocket.headers.get("user-agent", "")[:512],
+                }
                 started = True
-                await websocket.send_json({"type": "ack", "sample_rate": sample_rate, "feature_mode": "hum_song_mvp", "asr_mode": "not_used"})
+                await websocket.send_json(
+                    {
+                        "type": "ack",
+                        "sample_rate": sample_rate,
+                        "feature_mode": "hum_song_mvp",
+                        "asr_mode": hum_mvp_recognizer.lyrics_asr.status,
+                    }
+                )
                 continue
             if msg_type != "end" or not started:
                 await websocket.send_json({"type": "error", "message": "send start, PCM16 binary chunks, then end"})
                 continue
             end_received = perf_counter()
-            logger.info("hum_mvp_request sample_rate=%s chunks=%s pcm_bytes=%s", sample_rate, len(pcm_chunks), sum(map(len, pcm_chunks)))
+            try:
+                debug_capture = capture_pcm16(DEBUG_RECORDINGS_DIR, pcm_chunks, sample_rate, start_metadata)
+            except (OSError, ValueError) as exc:
+                logger.exception("hum_mvp_debug_capture_failed error=%s", exc)
+            logger.info(
+                "hum_mvp_request case=%s source=%s sample_rate=%s chunks=%s pcm_bytes=%s",
+                debug_capture.case_id if debug_capture else None,
+                start_metadata.get("input_source"),
+                sample_rate,
+                len(pcm_chunks),
+                sum(map(len, pcm_chunks)),
+            )
             result = hum_mvp_recognizer.recognize_pcm16(pcm_chunks, sample_rate)
             sent_at = perf_counter()
             result.update(
@@ -136,13 +170,20 @@ async def realtime_match(websocket: WebSocket) -> None:
                     },
                 }
             )
+            if debug_capture is not None:
+                result["debug_case_id"] = debug_capture.case_id
+                result["debug_saved"] = _save_debug_result(debug_capture, result)
             await websocket.send_json(result)
             await websocket.close()
             return
     except WebSocketDisconnect:
         return
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
-        await websocket.send_json({"type": "error", "message": str(exc)})
+        error_payload: dict[str, Any] = {"type": "error", "message": str(exc)}
+        if debug_capture is not None:
+            error_payload["debug_case_id"] = debug_capture.case_id
+            error_payload["debug_saved"] = _save_debug_result(debug_capture, error_payload)
+        await websocket.send_json(error_payload)
         await websocket.close()
 
 
@@ -156,3 +197,13 @@ def _parse_json_message(text: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("websocket JSON messages must be objects")
     return payload
+
+
+def _save_debug_result(capture: DebugCapture, payload: dict[str, Any]) -> bool:
+    try:
+        write_capture_result(capture, payload)
+    except OSError as exc:
+        logger.exception("hum_mvp_debug_result_failed case=%s error=%s", capture.case_id, exc)
+        return False
+    logger.info("hum_mvp_debug_saved case=%s directory=%s", capture.case_id, capture.directory)
+    return True

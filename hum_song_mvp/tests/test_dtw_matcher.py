@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from src.config import load_config
-from src.dtw_matcher import subsequence_dtw
+from src.dtw_matcher import subsequence_dtw, subsequence_dtw_nbest
 from src.pitch_postprocess import local_relative_pitch
 from src.pitch_extractor import PitchFeatures
 
@@ -46,6 +46,31 @@ class DtwMatcherTest(unittest.TestCase):
         assert result
         # A whole-phrase octave transposition is intentionally normalized away.
         self.assertLess(result.normalized_cost, 0.2)
+
+    def test_nbest_returns_time_separated_repeated_phrases(self):
+        config = load_config()
+        config["position_resolution"]["min_temporal_separation_seconds"] = 0.10
+        query_values = [60, 62, 64, 67, 65, 64, 62, 60]
+        reference = features([50, 51, *query_values, 55, 56, 57, 58, *query_values, 52, 51])
+        results = subsequence_dtw_nbest(features(query_values), reference, config, max_candidates=3)
+
+        self.assertGreaterEqual(len(results), 2)
+        self.assertGreater(abs(results[1].end_frame - results[0].end_frame), 5)
+        self.assertLess(results[0].normalized_cost, 0.5)
+        self.assertLess(results[1].normalized_cost, 0.5)
+
+    def test_nbest_suppresses_adjacent_endpoints(self):
+        config = load_config()
+        query_values = [60, 62, 64, 67, 65, 64, 62, 60]
+        results = subsequence_dtw_nbest(
+            features(query_values),
+            features([50, 51, *query_values, 60, 60, 60, 60]),
+            config,
+            max_candidates=5,
+        )
+
+        close_matches = [result for result in results if result.end_frame < 11]
+        self.assertEqual(len(close_matches), 1)
 
 
 if __name__ == "__main__":

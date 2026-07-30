@@ -11,6 +11,8 @@ data/source_lyrics/**/*
 data/source_vocals/**/*
 data/queries/**/*
 data/evaluation/**/*
+data/alignment_reports/**/*
+data/debug_recordings/**/*
 hum_song_mvp/data/database/**/*
 !data/source_audio/
 !data/source_audio/**/

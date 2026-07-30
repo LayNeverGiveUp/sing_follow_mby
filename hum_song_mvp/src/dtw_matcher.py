@@ -26,8 +26,25 @@ def warm_dtw() -> None:
 
 
 def subsequence_dtw(query: PitchFeatures, reference: PitchFeatures, config: dict) -> DtwResult | None:
+    results = subsequence_dtw_nbest(query, reference, config, max_candidates=1)
+    return results[0] if results else None
+
+
+def subsequence_dtw_nbest(
+    query: PitchFeatures,
+    reference: PitchFeatures,
+    config: dict,
+    max_candidates: int | None = None,
+) -> list[DtwResult]:
+    """Return distinct full-song alignment locations in DTW endpoint order.
+
+    A subsequence DTW minimum is normally surrounded by many nearly identical
+    endpoints.  Returning those adjacent endpoints as N-best candidates would
+    create false ambiguity, so paths are suppressed by temporal overlap and
+    centre distance before they leave the matcher.
+    """
     if len(query.time) == 0 or len(reference.time) == 0:
-        return None
+        return []
     local = _cost_matrix(query, reference, config["matching"])
     n, m = local.shape
     # librosa's DTW recurrence is JIT-compiled internally.  We keep the
@@ -36,32 +53,90 @@ def subsequence_dtw(query: PitchFeatures, reference: PitchFeatures, config: dict
     accumulated = np.full((n + 1, m + 1), np.inf, dtype=dtw_cost.dtype)
     accumulated[0, :] = 0.0
     accumulated[1:, 1:] = dtw_cost
-    candidates = np.argsort(accumulated[n, 1:]) + 1
-    for end_column in candidates[: min(64, m)]:
-        path = _trace_path(accumulated, n, int(end_column))
-        if not path:
+    settings = config.get("position_resolution", {})
+    requested = max_candidates if max_candidates is not None else int(settings.get("max_candidates", 5))
+    if requested <= 0:
+        return []
+    endpoint_limit = min(int(settings.get("max_endpoints_to_trace", 64)), m)
+    primary_limit = min(int(settings.get("primary_endpoints_to_trace", 64)), m)
+    min_separation_frames = max(
+        1,
+        int(round(float(settings.get("min_temporal_separation_seconds", 1.5)) / float(config["pitch"]["hop_seconds"]))),
+    )
+    max_overlap = float(settings.get("max_candidate_overlap", 0.50))
+    ranked_endpoints = np.argsort(accumulated[n, 1:]) + 1
+    results: list[DtwResult] = []
+    # Preserve the legacy Top-1 exactly: it searched the 64 lowest accumulated
+    # endpoints in order until it found a path with a valid speed ratio.
+    for end_column in ranked_endpoints[:primary_limit]:
+        result = _result_from_endpoint(query, reference, config, local, accumulated, n, int(end_column))
+        if result is not None:
+            results.append(result)
+            break
+    if not results or requested == 1:
+        return results
+
+    # Only after Top-1 is fixed do we inspect endpoints from other time regions.
+    # Skipping endpoints close to an accepted path prevents hundreds of nearly
+    # identical backtracks without changing the primary result.
+    traced = 0
+    for end_column in ranked_endpoints:
+        if traced >= endpoint_limit or len(results) >= requested:
+            break
+        if any(abs(int(end_column) - result.end_frame) < min_separation_frames for result in results):
             continue
-        start_frame, end_frame = path[0][1], path[-1][1]
-        reference_span = max(1, end_frame - start_frame + 1)
-        query_span = max(1, path[-1][0] - path[0][0] + 1)
-        speed_ratio = reference_span / query_span
-        if not (float(config["matching"]["min_speed_ratio"]) <= speed_ratio <= float(config["matching"]["max_speed_ratio"])):
+        traced += 1
+        result = _result_from_endpoint(query, reference, config, local, accumulated, n, int(end_column))
+        if result is None:
             continue
-        raw_cost = float(accumulated[n, end_column] / max(1, len(path)))
-        effective_cost, paired_seconds, query_coverage = _path_quality(query, reference, path, local, config)
-        if not np.isfinite(effective_cost):
+        if any(_same_location(result, existing, min_separation_frames, max_overlap) for existing in results):
             continue
-        return DtwResult(
-            normalized_cost=effective_cost,
-            raw_normalized_cost=raw_cost,
-            start_frame=start_frame,
-            end_frame=end_frame,
-            path=path,
-            speed_ratio=float(speed_ratio),
-            paired_voiced_seconds=paired_seconds,
-            query_voiced_coverage=query_coverage,
-        )
-    return None
+        results.append(result)
+    return results
+
+
+def _result_from_endpoint(
+    query: PitchFeatures,
+    reference: PitchFeatures,
+    config: dict,
+    local: np.ndarray,
+    accumulated: np.ndarray,
+    query_frames: int,
+    end_column: int,
+) -> DtwResult | None:
+    path = _trace_path(accumulated, query_frames, end_column)
+    if not path:
+        return None
+    start_frame, end_frame = path[0][1], path[-1][1]
+    reference_span = max(1, end_frame - start_frame + 1)
+    query_span = max(1, path[-1][0] - path[0][0] + 1)
+    speed_ratio = reference_span / query_span
+    if not (float(config["matching"]["min_speed_ratio"]) <= speed_ratio <= float(config["matching"]["max_speed_ratio"])):
+        return None
+    raw_cost = float(accumulated[query_frames, end_column] / max(1, len(path)))
+    effective_cost, paired_seconds, query_coverage = _path_quality(query, reference, path, local, config)
+    if not np.isfinite(effective_cost):
+        return None
+    return DtwResult(
+        normalized_cost=effective_cost,
+        raw_normalized_cost=raw_cost,
+        start_frame=start_frame,
+        end_frame=end_frame,
+        path=path,
+        speed_ratio=float(speed_ratio),
+        paired_voiced_seconds=paired_seconds,
+        query_voiced_coverage=query_coverage,
+    )
+
+
+def _same_location(first: DtwResult, second: DtwResult, min_separation_frames: int, max_overlap: float) -> bool:
+    first_center = (first.start_frame + first.end_frame) / 2.0
+    second_center = (second.start_frame + second.end_frame) / 2.0
+    if abs(first_center - second_center) < min_separation_frames:
+        return True
+    overlap = max(0, min(first.end_frame, second.end_frame) - max(first.start_frame, second.start_frame) + 1)
+    shorter = max(1, min(first.end_frame - first.start_frame + 1, second.end_frame - second.start_frame + 1))
+    return overlap / shorter > max_overlap
 
 
 def _cost_matrix(query: PitchFeatures, reference: PitchFeatures, config: dict) -> np.ndarray:

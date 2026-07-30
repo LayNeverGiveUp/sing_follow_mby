@@ -11,18 +11,20 @@ import librosa
 import numpy as np
 
 from hum_song_mvp.src.config import load_config
+from hum_song_mvp.src.lyrics_asr import get_lyrics_asr
 from hum_song_mvp.src.recognize import recognize_samples
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 class HumMvpRecognizer:
-    def __init__(self, database_dir: Path | None = None) -> None:
+    def __init__(self, database_dir: Path | None = None, lyrics_asr=None) -> None:
         configured = os.getenv("HUM_SONG_MVP_DATABASE_DIR")
         default_dir = Path(__file__).resolve().parents[1] / "hum_song_mvp" / "data" / "database"
         self.database_dir = database_dir or (Path(configured) if configured else default_dir)
         self.config = load_config()
+        self.lyrics_asr = lyrics_asr if lyrics_asr is not None else get_lyrics_asr(self.config)
 
     def recognize_pcm16(self, chunks: list[bytes], sample_rate: int) -> dict[str, Any]:
         total_started = perf_counter()
@@ -41,7 +43,7 @@ class HumMvpRecognizer:
         if sample_rate != target_rate:
             samples = librosa.resample(samples, orig_sr=sample_rate, target_sr=target_rate)
         resample_ms = (perf_counter() - resample_started) * 1000
-        payload = recognize_samples(samples, self.database_dir, self.config)
+        payload = recognize_samples(samples, self.database_dir, self.config, self.lyrics_asr)
         payload["matched"] = payload["accepted"]
         payload["confidence"] = payload["score"]
         payload["song_name"] = payload["song_id"]
@@ -52,11 +54,12 @@ class HumMvpRecognizer:
         stages["resample"] = round(resample_ms, 1)
         stages["service_total"] = round((perf_counter() - total_started) * 1000, 1)
         logger.info(
-            "hum_mvp_result accepted=%s reason=%s song=%s input=%.2fs trimmed=%.2fs voiced=%.2fs range=%.2fst rms=%.1fdB candidates=%s",
-            payload["accepted"], payload.get("reason"), payload.get("song_id"),
+            "hum_mvp_result accepted=%s status=%s reason=%s song=%s input=%.2fs trimmed=%.2fs voiced=%.2fs range=%.2fst rms=%.1fdB candidates=%s lyrics_asr=%s",
+            payload["accepted"], payload.get("recognition_status"), payload.get("reason"), payload.get("song_id"),
             diagnostics.get("input_duration_seconds", 0.0), diagnostics.get("trimmed_duration_seconds", 0.0),
             diagnostics.get("voiced_seconds", 0.0), diagnostics.get("pitch_range_semitones", 0.0),
             diagnostics.get("input_rms_dbfs", 0.0), diagnostics.get("candidates", []),
+            diagnostics.get("lyrics_asr"),
         )
         return payload
 

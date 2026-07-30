@@ -31,6 +31,9 @@ const els = {
   eventLog: document.querySelector("#eventLog"),
 };
 
+const websocketProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+els.wsUrl.value = `${websocketProtocol}//${window.location.host}/v1/realtime-match`;
+
 function logEvent(message, detail) {
   const timestamp = new Date().toLocaleTimeString();
   const suffix = detail === undefined ? "" : ` ${typeof detail === "string" ? detail : JSON.stringify(detail)}`;
@@ -65,16 +68,33 @@ function clearRecordedAudio() {
 
 function updateResult(result) {
   const accepted = Boolean(result.accepted ?? result.matched);
-  els.resultTitle.textContent = accepted ? result.song_name || result.song_id || "已匹配" : "未匹配";
+  const songOnly = result.recognition_status === "song_only";
+  els.resultTitle.textContent = accepted
+    ? result.song_name || result.song_id || "已匹配"
+    : songOnly
+      ? "歌曲已识别，位置不确定"
+      : "未匹配";
   els.endToResult.textContent = `${result.latency_ms?.end_to_result ?? "--"}ms`;
   els.matched.textContent = String(accepted);
-  els.songId.textContent = result.song_id || "--";
+  els.songId.textContent = result.song_id || result.best_candidate_song_id || "--";
   const score = result.score ?? result.confidence;
   els.confidence.textContent = typeof score === "number" ? score.toFixed(4) : "--";
-  const current = result.current_lyric_text || result.matched_line || "--";
+  const current = result.current_lyric_text || result.matched_line || (songOnly ? reasonMessage(result.reason) : "--");
   const next = result.next_lyric_text ? ` → ${result.next_lyric_text}` : "";
   els.matchedLine.textContent = `${current}${next}`;
   els.rawJson.textContent = JSON.stringify(result, null, 2);
+}
+
+function reasonMessage(reason) {
+  const messages = {
+    ambiguous_repeated_melody: "检测到多处相同旋律，请唱出带歌词的一句。",
+    asr_unavailable_for_ambiguous_melody: "检测到多处相同旋律，但歌词识别服务当前不可用。",
+    asr_no_lexical_content: "没有检测到可用于区分位置的歌词，请不要只哼“啦啦啦”。",
+    asr_low_confidence: "歌词内容不够清晰，无法确定具体段落。",
+    lyrics_margin_too_small: "唱到的歌词在多个位置都很相似，暂时无法确定段落。",
+    lyrics_no_discriminative_evidence: "当前歌词没有包含可区分重复段落的关键词。",
+  };
+  return messages[reason] || "未识别成功，请换一句重试。";
 }
 
 function setButtonsDisabled(disabled) {
@@ -192,7 +212,9 @@ function showRecognitionAudio(result) {
   if (!result.accepted || !result.song_id || !Number.isInteger(result.current_lyric_index)) {
     els.nextAudio.removeAttribute("src");
     els.nextAudio.load();
-    els.nextLabel.textContent = "未识别成功，因此不播放下一句。";
+    els.nextLabel.textContent = result.recognition_status === "song_only"
+      ? reasonMessage(result.reason)
+      : "未识别成功，因此不播放下一句。";
     return;
   }
   const song = encodeURIComponent(result.song_id);
@@ -210,10 +232,18 @@ function showRecognitionAudio(result) {
   }
 }
 
-async function sendPcmForMvp(pcmChunks, sampleRate) {
+async function sendPcmForMvp(pcmChunks, sampleRate, inputSource, expected = {}) {
   const socket = new WebSocket(els.wsUrl.value.trim());
   await waitForOpen(socket);
-  socket.send(JSON.stringify({ type: "start", catalog_id: "mao_buyi_v1", matcher_mode: "hum_song_mvp", sample_rate: sampleRate, format: "pcm_s16le" }));
+  socket.send(JSON.stringify({
+    type: "start",
+    catalog_id: "mao_buyi_v1",
+    matcher_mode: "hum_song_mvp",
+    sample_rate: sampleRate,
+    format: "pcm_s16le",
+    input_source: inputSource,
+    ...expected,
+  }));
   for (const chunk of pcmChunks) socket.send(chunk);
   logEvent("已发送 PCM", { sample_rate: sampleRate, chunks: pcmChunks.length, bytes: pcmChunks.reduce((total, chunk) => total + chunk.byteLength, 0) });
   const endSentAt = performance.now();
@@ -243,7 +273,10 @@ async function sendVocalTest() {
     const chunks = [];
     for (let offset = 0; offset < mono.length; offset += 2048) chunks.push(floatToPcm16(mono.subarray(offset, offset + 2048)));
     setStatus("Matching", "active");
-    const result = await sendPcmForMvp(chunks, context.sampleRate);
+    const result = await sendPcmForMvp(chunks, context.sampleRate, "one_click_vocal", {
+      expected_song_id: selected.song_id,
+      expected_lyric_index: selected.current_lyric_index,
+    });
     logEvent("识别结果", { accepted: result.accepted, reason: result.reason, diagnostics: result.diagnostics });
     updateResult(result);
     showRecognitionAudio(result);
@@ -332,11 +365,12 @@ async function stopRecording() {
     els.recordingHint.textContent = `已录制 ${recordedSeconds} 秒，正在识别…`;
     logEvent("停止录音", { duration_seconds: Number(recordedSeconds), chunks: recorder.pcmChunks.length });
     setStatus("Matching", "active");
-    const result = await sendPcmForMvp(recorder.pcmChunks, recorder.context.sampleRate);
-    logEvent("识别结果", { accepted: result.accepted, reason: result.reason, diagnostics: result.diagnostics });
+    const result = await sendPcmForMvp(recorder.pcmChunks, recorder.context.sampleRate, "microphone");
+    logEvent("识别结果", { case_id: result.debug_case_id, accepted: result.accepted, reason: result.reason, diagnostics: result.diagnostics });
     updateResult(result);
     showRecognitionAudio(result);
-    els.recordingHint.textContent = `已录制 ${recordedSeconds} 秒，识别完成。`;
+    const caseLabel = result.debug_case_id ? ` Case：${result.debug_case_id}` : "";
+    els.recordingHint.textContent = `已录制 ${recordedSeconds} 秒，识别完成。${caseLabel}`;
     setStatus("Done", "active");
   } catch (error) {
     els.resultTitle.textContent = "识别失败";

@@ -25,6 +25,62 @@ matching:
   silence_silence_penalty: 0.04
   min_speed_ratio: 0.50
   max_speed_ratio: 2.00
+position_resolution:
+  # Keep several time-separated matches inside the winning song. Adjacent DTW
+  # endpoints are suppressed before ambiguity is evaluated.
+  max_candidates: 5
+  primary_endpoints_to_trace: 64
+  max_endpoints_to_trace: 64
+  min_temporal_separation_seconds: 1.50
+  max_candidate_overlap: 0.50
+  frame_ambiguity_cost_delta: 0.12
+  frame_ambiguity_cost_ratio: 1.60
+  require_phrase_support_for_frame_ambiguity: true
+  phrase_ambiguity_cost_delta: 0.15
+  phrase_ambiguity_cost_ratio: 1.30
+lyrics_asr:
+  enabled: true
+  provider: volcengine_auc
+  request_timeout_seconds: 20.0
+  poll_interval_seconds: 0.5
+  max_wait_seconds: 20.0
+  lyric_window_padding_seconds: 0.0
+  min_lexical_characters: 2
+  filler_characters: "啊呀啦哦噢嗯呜诶欸"
+  character_weight: 0.45
+  pinyin_weight: 0.35
+  discriminative_weight: 0.20
+  min_lyrics_score: 0.45
+  min_lyrics_margin: 0.12
+  min_discriminative_score: 0.20
+alignment_validation:
+  # A line becomes a timing anchor only when ASR covers enough of its text.
+  min_anchor_lines: 6
+  min_matched_characters_per_line: 2
+  min_line_character_coverage_for_anchor: 0.20
+  fit_minimum_outlier_seconds: 0.75
+  discontinuity_jump_seconds: 1.50
+  unmatched_span_min_lines: 3
+  # Strict pass gate for automatic catalog ingestion.
+  min_character_coverage_pass: 0.55
+  min_line_coverage_pass: 0.60
+  max_median_error_seconds_pass: 0.65
+  max_p95_error_seconds_pass: 1.50
+  max_drift_ratio_delta_pass: 0.015
+  max_discontinuities_pass: 0
+  max_unmatched_spans_pass: 0
+  # Warning still means human review is required before ingestion.
+  min_character_coverage_warning: 0.35
+  min_line_coverage_warning: 0.40
+  max_median_error_seconds_warning: 1.50
+  max_p95_error_seconds_warning: 3.00
+  max_drift_ratio_delta_warning: 0.05
+  max_discontinuities_warning: 2
+  max_unmatched_spans_warning: 1
+  # Only a single global offset / linear drift may be auto-corrected.
+  min_character_coverage_auto_correct: 0.55
+  min_line_coverage_auto_correct: 0.60
+  max_drift_ratio_delta_auto_correct: 0.03
 phrase_matching:
   contour_points: 72
   pitch_weight: 0.80
@@ -44,6 +100,12 @@ phrase_matching:
   min_trusted_frame_coverage: 0.60
   strong_frame_coverage: 0.80
   min_trusted_frame_voiced_seconds: 0.75
+  max_strong_frame_cost: 0.50
+  min_standalone_frame_margin: 0.02
+  cross_song_asr_top_k: 4
+  cross_song_positions_per_song: 3
+  cross_song_position_cost_delta: 0.15
+  cross_song_position_cost_ratio: 1.50
 confidence:
   # Exploratory two-song demo: favor returning a candidate over rejecting it.
   # Browser recordings often contain breath and trailing silence. This is an

@@ -2,9 +2,9 @@
 
 这是一个面向单歌手、有限歌曲库的非流式旋律识别服务。
 
-用户清唱或哼唱 4～8 秒后，系统识别歌曲和当前歌词行，并返回下一句歌词及其开始时间。主识别不依赖 ASR，不使用音频指纹、向量数据库或神经网络旋律检索。
+用户清唱或哼唱 4～8 秒后，系统识别歌曲和当前歌词行，并返回下一句歌词及其开始时间。主识别由旋律完成；只有旋律无法唯一确定歌曲或歌词位置时，才条件调用 ASR 在旋律 Top-K 候选内消歧。系统不使用音频指纹、向量数据库或神经网络旋律检索。
 
-当前示例曲库包含毛不易的《消愁》和《一程山路》。
+当前本地示例曲库包含毛不易的 7 首歌：《消愁》《一程山路》《东北民谣》《呓语》《如果有一天我变得很有钱》《爱情神话》和《风吟诛仙》。音频、LRC 与生成特征不提交到 Git。
 
 ## 系统架构
 
@@ -12,11 +12,15 @@
 flowchart LR
     subgraph Offline["离线建库"]
         A["歌曲混音 + 同版本 LRC"] --> B["BS-RoFormer<br/>人声分离"]
-        B --> C["pYIN 提取 F0"]
+        A --> F["LRC 解析与分句"]
+        B --> W["入库门禁<br/>整曲歌声 ASR + 字级时间"]
+        F --> W
+        W --> X{"版本一致？"}
+        X -- "否" --> Y["拒绝入库 / 人工复核"]
+        X -- "是" --> C["pYIN 提取 F0"]
         C --> D["F0 清洗<br/>置信度过滤 / 短空洞修复<br/>八度纠错 / MIDI 转换"]
         D --> E["整曲帧特征库<br/>NPZ"]
-        A --> F["LRC 解析与分句"]
-        F --> G["歌词时间元数据<br/>JSON"]
+        X -- "是" --> G["歌词时间元数据<br/>JSON"]
     end
 
     subgraph Online["在线识别"]
@@ -28,15 +32,22 @@ flowchart LR
         E --> K1
         E --> K2
         G --> K2
-        K1 --> L["Hybrid 证据融合"]
+        K1 --> L["Hybrid 证据融合<br/>按不同歌曲计算 margin"]
         K3 --> L
-        L --> M{"置信度足够？"}
+        L --> M{"旋律证据能唯一定位？"}
         M -- "是" --> N["映射当前歌词<br/>返回下一句时间"]
-        M -- "否" --> O["拒识<br/>不强行猜测"]
+        M -- "否" --> Q{"存在可靠旋律 Top-K？"}
+        Q -- "否" --> O["拒识<br/>不强行猜测"]
+        Q -- "是" --> S["条件 ASR<br/>只转写用户歌词"]
+        S --> T["仅在旋律候选中重排<br/>字符 / 拼音 / 差异词"]
+        T --> U{"歌词证据足够？"}
+        U -- "是" --> N
+        U -- "否" --> V["song_only<br/>歌曲已识别，位置不确定"]
     end
 
     N --> P["CLI JSON / WebSocket JSON"]
     O --> P
+    V --> P
 ```
 
 ## 核心算法
@@ -68,10 +79,24 @@ flowchart LR
 
 ### 3. Hybrid 融合与拒识
 
-- 帧级路径覆盖充分时，优先相信其歌曲和时间位置；
-- 帧级覆盖不足时，仅允许明显领先第二名的乐句结果接管；
-- 两个通道冲突且没有可靠证据时直接拒识；
-- 重复或高度相似旋律无法唯一定位时拒识，不根据已知歌词标签作弊。
+- 乐句 Top1/Top2 差距按不同歌曲计算，同一首歌的多个相似句不会互相压低歌曲置信度；
+- 帧级结果只有同时满足有声覆盖率、配对时长和 cost 门槛时才算强证据；低覆盖 DTW 只保留在诊断信息中；
+- 强帧 DTW 与乐句通道认定同一首歌时，由两条通道共同确认歌曲，并保留强帧的精确时间和歌词行；
+- 乐句结果对其他歌曲明显领先时，可独立完成定位；同歌 N-best 仍用于检查重复旋律位置；
+- 歌曲 margin 很小或两个强通道冲突时，ASR 只能重排旋律筛出的 Top-K 歌曲与歌词行，不能在全曲库自由搜索；
+- 旋律、歌词或输入质量任一证据不足时拒识，不通过放宽全局阈值强行猜测。
+
+### 4. 条件歌词消歧
+
+歌词通道只在旋律存在多个可靠歌曲或位置候选时运行：
+
+- 全曲 DTW 先固定与旧算法一致的 Top-1，再提取时间分离的 N-best 路径；
+- 相邻 DTW 结束帧会在回溯前后两次去重，不会伪装成多个位置；
+- 帧级候选还需要乐句轮廓支持，才会触发 ASR；
+- 跨歌消歧默认只查看旋律最接近的 4 首歌，每首歌最多保留 3 个歌词位置；
+- ASR 文本与每个候选时间窗内的 LRC 做局部字符、无声调拼音和差异字符匹配；
+- “啦啦啦”等填充音会被移除，没有有效文字时明确拒绝位置定位；
+- 当前句和下一句文本完全等价的重复段落视为同一输出，不额外触发 ASR。
 
 所有阈值位于 [config.yaml](hum_song_mvp/config/config.yaml)。
 
@@ -81,6 +106,7 @@ flowchart LR
 app/
   main.py                   FastAPI、静态页面和 WebSocket 入口
   hum_recognizer.py         PCM16 解码、重采样和结果适配
+  debug_capture.py          保存原始请求音频和识别诊断
   web/                      录音与一键干声测试页面
 
 hum_song_mvp/
@@ -92,6 +118,9 @@ hum_song_mvp/
     pitch_postprocess.py    F0 清洗
     dtw_matcher.py          帧级 Subsequence DTW
     phrase_matcher.py       乐句轮廓与 Segmental DTW
+    lyrics_asr.py           条件 ASR 适配器
+    lyrics_reranker.py      中文歌词归一化与候选重排
+    alignment_validator.py  LRC/音频版本校验与时间拟合
     confidence.py           帧级拒识规则
     lyric_mapper.py         DTW 时间到 LRC 行映射
     build_database.py       离线建库 CLI
@@ -104,6 +133,7 @@ tools/
   diagnose_hum_mvp_lines.py     批量回归全部歌词行
   split_silence_cases.py        按静音切分外部清唱
   evaluate_labeled_segments.py  评估连续标注片段
+  validate_song_alignment.py    入库前校验 LRC 与音频版本
 ```
 
 音频和生成特征默认不提交到 Git：
@@ -113,6 +143,8 @@ data/source_audio/mao_buyi_v1/   原始歌曲混音
 data/source_vocals/mao_buyi_v1/  分离后的人声
 data/source_lyrics/mao_buyi_v1/  与音频同版本的 LRC
 data/queries/                    一键测试和外部测试片段
+data/alignment_reports/          LRC 校验报告、试听页和校正结果
+data/debug_recordings/           WebSocket 原始录音与逐次识别结果
 hum_song_mvp/data/database/      建库后的 JSON / NPZ
 ```
 
@@ -130,11 +162,91 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### 可选：配置旋律模糊时的歌词消歧
+
+当前内置火山引擎录音文件识别 2.0 适配器。未配置凭据时，旋律能够唯一定位的输入仍可正常识别；跨歌或同歌重复旋律需要歌词时会安全拒识并返回对应原因。
+
+接口与资源开通方式参考[火山引擎录音文件识别标准版 HTTP 官方文档](https://www.volcengine.com/docs/6561/1354868?lang=zh)。项目将用户录音编码成 WAV 后直接通过 base64 提交，不依赖公网音频 URL。
+
+```bash
+export VOLCENGINE_ASR_ACCESS_TOKEN="你的 Access Token"
+export VOLCENGINE_ASR_APP_ID="你的 App ID"
+export VOLCENGINE_ASR_RESOURCE_ID="volc.seedasr.auc"
+```
+
+当前项目使用应用鉴权：`App ID + Access Token`。凭据只能通过环境变量注入，不要写进配置、源码或提交记录。
+
+还可以覆盖接口地址：
+
+```bash
+export HUM_LYRICS_ASR_PROVIDER="volcengine_auc"
+export VOLCENGINE_ASR_SUBMIT_ENDPOINT="https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit"
+export VOLCENGINE_ASR_QUERY_ENDPOINT="https://openspeech.bytedance.com/api/v3/auc/bigmodel/query"
+```
+
+`GET /health` 和 WebSocket `ack.asr_mode` 会返回 `volcengine_auc`、`missing_credentials` 或 `disabled`，不会返回凭据内容。
+
+为了复盘手机录音问题，WebSocket 请求默认会把服务实际收到的单声道 PCM16 保存到：
+
+```text
+data/debug_recordings/YYYY-MM-DD/<case_id>/
+  input.wav
+  request.json
+  result.json
+```
+
+返回结果中的 `debug_case_id` 可直接定位这一组文件。该目录已加入 `.gitignore`；生产环境仍需按隐私要求设置保留周期和访问权限。可通过 `HUM_SONG_DEBUG_RECORDINGS_DIR` 修改保存目录。
+
 只有从歌曲混音自动建库时才需要安装人声分离依赖：
 
 ```bash
 pip install -r hum_song_mvp/requirements-separation.txt
 ```
+
+## 入库前校验 LRC 与歌曲版本
+
+新增歌曲不要直接建库。先用整曲歌声 ASR 的字级时间戳与 LRC 做汉字、拼音序列对齐：
+
+```bash
+.venv/bin/python tools/validate_song_alignment.py \
+  --audio "data/source_audio/mao_buyi_v1/新歌.mp3" \
+  --vocal "data/source_vocals/mao_buyi_v1/新歌.wav" \
+  --lrc "data/source_lyrics/mao_buyi_v1/新歌.lrc"
+```
+
+如果还没有分离人声，可以让工具先分离：
+
+```bash
+.venv/bin/python tools/validate_song_alignment.py \
+  --audio "data/source_audio/mao_buyi_v1/新歌.mp3" \
+  --lrc "data/source_lyrics/mao_buyi_v1/新歌.lrc" \
+  --separation-mode audio-separator
+```
+
+默认输出到 `data/alignment_reports/新歌/`：
+
+- `alignment_report.json`：覆盖率、全局偏移、线性漂移、逐行误差和时间轴跳变；
+- `asr_transcript.json`：可复用的字级 ASR 结果，重复调试时不再调用云服务；
+- `review.html` 与 `review_clips/`：全曲均匀锚点和最大误差点的人工试听页；
+- `新歌.corrected.lrc`：仅当问题可归结为安全的全局偏移或轻微线性漂移时生成，不覆盖原文件。
+
+判定分为：
+
+- `pass`：允许入库，进程退出码为 0；
+- `warning`：可能同版本但必须试听复核，退出码为 1；
+- `fail`：歌词覆盖不足、中途跳变或疑似不同剪辑，拒绝入库，退出码为 2。
+
+复用已有 ASR 结果：
+
+```bash
+.venv/bin/python tools/validate_song_alignment.py \
+  --audio "data/source_audio/mao_buyi_v1/新歌.mp3" \
+  --vocal "data/source_vocals/mao_buyi_v1/新歌.wav" \
+  --lrc "data/source_lyrics/mao_buyi_v1/新歌.lrc" \
+  --transcript-json "data/alignment_reports/新歌/asr_transcript.json"
+```
+
+真实验证中，《消愁》字符覆盖率为 98.0%，26/26 行获得时间锚点，中位误差 82ms、P95 误差 386ms，无时间轴跳变，判定为 `pass`。
 
 ## 离线建库
 
@@ -144,13 +256,13 @@ pip install -r hum_song_mvp/requirements-separation.txt
 
 ```text
 data/source_vocals/mao_buyi_v1/
-  消愁.wav
-  一程山路.wav
+  <song_id>.wav
 
 data/source_lyrics/mao_buyi_v1/
-  消愁.lrc
-  一程山路.lrc
+  <song_id>.lrc
 ```
+
+音频与 LRC 必须同名；目录中的每一对文件都会参与建库。
 
 执行：
 
@@ -179,6 +291,8 @@ cd hum_song_mvp
 
 ## 启动服务
 
+仅在本机使用：
+
 ```bash
 .venv/bin/python -m uvicorn app.main:app \
   --host 127.0.0.1 \
@@ -191,11 +305,29 @@ cd hum_song_mvp
 http://127.0.0.1:8000/demo/
 ```
 
+局域网手机测试时监听所有网卡，并用电脑的局域网 IP 访问：
+
+```bash
+.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+```text
+http://<电脑局域网IP>:8000/demo/
+```
+
+iOS 浏览器通常要求 HTTPS 才允许麦克风。临时联调可使用 Cloudflare Tunnel：
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:8000
+```
+
+使用命令输出的临时 HTTPS 地址打开 `/demo/`。临时地址会变化，不要写入客户端配置或 README。
+
 页面提供：
 
 - 一键干声测试：随机抽取一条真实人声片段并完整走 WebSocket 识别；
 - 用户录音：录制 4～8 秒清唱或哼唱；
-- 结果诊断：显示当前句、下一句、拒识原因和各阶段耗时。
+- 结果诊断：显示当前句、下一句、拒识原因、各阶段耗时和 `debug_case_id`。
 
 ## CLI 识别
 
@@ -225,6 +357,21 @@ cd hum_song_mvp
 
 拒识时 `accepted` 为 `false`，歌曲和歌词位置为 `null`，并返回明确的 `reason`。
 
+歌曲已识别但重复位置无法确定时：
+
+```json
+{
+  "accepted": false,
+  "recognition_status": "song_only",
+  "position_resolved": false,
+  "song_id": null,
+  "best_candidate_song_id": "消愁",
+  "reason": "asr_no_lexical_content"
+}
+```
+
+`accepted: true` 仍然只表示系统能够可靠给出下一句，因此现有前端和调用方保持兼容。
+
 ## WebSocket 协议
 
 地址：
@@ -242,7 +389,9 @@ ws://127.0.0.1:8000/v1/realtime-match
   "type": "start",
   "matcher_mode": "hum_song_mvp",
   "format": "pcm_s16le",
-  "sample_rate": 16000
+  "sample_rate": 16000,
+  "input_source": "microphone",
+  "catalog_id": "mao_buyi_v1"
 }
 ```
 
@@ -253,7 +402,7 @@ ws://127.0.0.1:8000/v1/realtime-match
 {"type": "end"}
 ```
 
-4. 服务一次性执行识别，返回 `type: "result"` 后关闭连接。
+4. 服务一次性执行识别，返回 `type: "result"` 和本次 `debug_case_id` 后关闭连接。
 
 当前不是流式逐帧识别；WebSocket 仅用于上传完整乐句和返回结果。
 
@@ -297,19 +446,37 @@ cd hum_song_mvp
 
 ## 当前测试结果
 
+以下数据来自 7 首歌曲库和当前 Hybrid + 条件 ASR 实现：
+
 | 数据集 | 正确 | 错接 | 拒识 |
 |---|---:|---:|---:|
-| 库内逐句干声 | 43 / 45 | 0 | 2 |
+| 两首原有库内逐句干声 | 42 / 45 | 0 | 3 |
 | 《消愁》库内逐句 | 25 / 25 | 0 | 0 |
-| 外部清唱 b 原始版 | 4 / 10 | 0 | 6 |
-| 外部清唱 b 人声分离版 | 8 / 10 | 0 | 2 |
+| 《一程山路》库内逐句 | 17 / 20 | 0 | 3 |
+| 外部清唱 b 人声分离版 | 10 / 10 | 0 | 0 |
+| 手机现场录音复盘集 | 3 / 3 | 0 | 0 |
 
-库内 45 句的平均核心识别耗时约为 609 ms。首次请求可能包含 librosa/Numba 初始化开销。
+手机复盘集覆盖三种关键路线：
+
+- 《消愁》：歌曲旋律证据明确，但同歌多个相似句需要 ASR 定位；
+- 《一程山路》：不同歌曲的旋律 margin 很小，ASR 在旋律 Top-K 内纠正歌曲和歌词行；
+- 《东北民谣》：旋律证据充分，不调用 ASR 直接返回下一句。
+
+两首库内逐句共 45 条的 3 个拒识分别来自有效音高变化不足、有效有声时长不足和短句歌词证据不足；没有错误接唱。这里保留拒识，不用全局放宽阈值换取表面通过率。
+
+当前开发机上，三条手机录音的 WebSocket `end_to_result` 分别约为：
+
+- 不调用 ASR：约 1.5 秒；
+- 调用 ASR：约 3.5～3.8 秒。
+
+ASR 网络状态会影响总耗时；首次请求还可能包含 librosa/Numba 初始化开销。
 
 ## 已知限制
 
 - 曲库仅适合单歌手和有限歌曲数量；
 - 建库音频与 LRC 必须严格同版本；
-- 纯旋律无法区分旋律完全相同但歌词不同的段落，此时系统会拒识；
+- 纯旋律无法区分旋律完全相同但歌词不同的段落，此时返回 `song_only`；
+- ASR 只负责重排旋律候选，不作为全曲库主识别，也不会帮助纯“啦啦啦”区分同旋律歌词；
 - 输入过短、F0 太少、音高变化不足或候选差距太小时会拒识；
-- 当前不支持实时流式识别、ASR 主识别和自动生成接唱人声。
+- 当前 7 首曲库只是工程验证规模；继续扩库前必须重新统计歌曲、歌词行和拒识准确率；
+- 当前不支持实时流式旋律识别、ASR 主识别和自动生成接唱人声。
