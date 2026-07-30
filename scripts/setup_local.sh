@@ -16,6 +16,18 @@ fi
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python tools/bootstrap_runtime.py
 
+if [[ "${INSTALL_QUERY_ASSETS:-1}" != "0" ]]; then
+  QUERY_ASSET_DIR="data/queries/mao_buyi_v1"
+  if [[ ! -f "$QUERY_ASSET_DIR/.asset-version.json" ]] && \
+    .venv/bin/python -c 'from pathlib import Path; raise SystemExit(0 if any(Path("data/queries/mao_buyi_v1").rglob("*.wav")) else 1)'; then
+    echo "Local query WAV files already exist; keeping them unchanged."
+  else
+    .venv/bin/python tools/install_query_assets.py
+  fi
+else
+  echo "Skipping optional query WAV assets (INSTALL_QUERY_ASSETS=0)."
+fi
+
 echo
 echo "Setup complete. Start the service with:"
 echo "  bash scripts/run_local.sh"

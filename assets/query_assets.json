@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "catalog_id": "mao_buyi_v1",
+  "version": "v1",
+  "release_tag": "assets-mao_buyi_v1-v1",
+  "asset_name": "mao_buyi_v1-queries-v1.zip",
+  "url": "https://github.com/LayNeverGiveUp/sing_follow_mby/releases/download/assets-mao_buyi_v1-v1/mao_buyi_v1-queries-v1.zip",
+  "sha256": "f742929b70b5ab2d096823a28fd1782c37fb9924916f50887aa42fa43850076c",
+  "archive_size_bytes": 167762264,
+  "uncompressed_size_bytes": 211869160,
+  "file_count": 255,
+  "target": "data/queries/mao_buyi_v1"
+}
