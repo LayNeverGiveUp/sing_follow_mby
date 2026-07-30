@@ -85,8 +85,8 @@ def _build_song(
     np.savez_compressed(output_dir / features_name, **features.to_npz_dict())
     metadata = {
         "song_id": song_id,
-        "audio_path": str(audio_path.resolve()),
-        "vocal_path": str(vocal_path.resolve()),
+        "audio_path": _portable_metadata_path(audio_path),
+        "vocal_path": _portable_metadata_path(vocal_path),
         "duration": round(duration, 3),
         "feature_hop_seconds": float(config["pitch"]["hop_seconds"]),
         "features_file": features_name,
@@ -95,6 +95,16 @@ def _build_song(
     metadata_path = output_dir / f"{song_id}.json"
     metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return metadata_path
+
+
+def _portable_metadata_path(path: Path) -> str:
+    """Avoid embedding one developer's absolute workspace path in the DB."""
+    resolved = path.resolve()
+    repository_root = Path(__file__).resolve().parents[2]
+    try:
+        return str(resolved.relative_to(repository_root))
+    except ValueError:
+        return str(path)
 
 
 def filter_lyric_lines(lines: list[dict], song_id: str, duration: float) -> list[dict]:

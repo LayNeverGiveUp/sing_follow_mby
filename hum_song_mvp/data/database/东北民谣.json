@@ -1,0 +1,290 @@
+{
+  "song_id": "东北民谣",
+  "audio_path": "data/source_audio/mao_buyi_v1/东北民谣.mp3",
+  "vocal_path": "data/source_vocals/mao_buyi_v1/东北民谣.wav",
+  "duration": 278.44,
+  "feature_hop_seconds": 0.025,
+  "features_file": "东北民谣_features.npz",
+  "lrc_lines": [
+    {
+      "index": 0,
+      "start_time": 30.03,
+      "end_time": 35.63,
+      "text": "三九的梅花红了满山的雪",
+      "nominal_end_time": 35.63,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 1,
+      "start_time": 35.63,
+      "end_time": 37.77,
+      "text": "萧条枝影",
+      "nominal_end_time": 37.77,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 2,
+      "start_time": 37.77,
+      "end_time": 43.01,
+      "text": "月牙照人眠",
+      "nominal_end_time": 43.01,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 3,
+      "start_time": 43.01,
+      "end_time": 48.75,
+      "text": "小伙赶着马车手里攥着长鞭",
+      "nominal_end_time": 48.75,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 4,
+      "start_time": 48.75,
+      "end_time": 50.69,
+      "text": "江风吹过",
+      "nominal_end_time": 50.69,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 5,
+      "start_time": 50.69,
+      "end_time": 55.72,
+      "text": "他通红的脸",
+      "nominal_end_time": 55.72,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 6,
+      "start_time": 55.72,
+      "end_time": 62.01,
+      "text": "锣鼓声声正月正",
+      "nominal_end_time": 62.01,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 7,
+      "start_time": 62.01,
+      "end_time": 68.55,
+      "text": "爆竹声里落尽一地红",
+      "nominal_end_time": 68.55,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 8,
+      "start_time": 68.55,
+      "end_time": 75.28,
+      "text": "家家户户都点上花灯",
+      "nominal_end_time": 75.28,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 9,
+      "start_time": 75.28,
+      "end_time": 80.225,
+      "text": "又是一年好收成",
+      "nominal_end_time": 107.92,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 10,
+      "start_time": 107.92,
+      "end_time": 113.5,
+      "text": "清泠泠的江水滔滔流了多久",
+      "nominal_end_time": 113.5,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 11,
+      "start_time": 113.5,
+      "end_time": 115.52,
+      "text": "像那游子",
+      "nominal_end_time": 115.52,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 12,
+      "start_time": 115.52,
+      "end_time": 120.88,
+      "text": "一去不回头",
+      "nominal_end_time": 120.88,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 13,
+      "start_time": 120.88,
+      "end_time": 126.54,
+      "text": "姑娘含着眼泪孤单站在门口",
+      "nominal_end_time": 126.54,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 14,
+      "start_time": 126.54,
+      "end_time": 128.99,
+      "text": "一眼望断了",
+      "nominal_end_time": 128.99,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 15,
+      "start_time": 128.99,
+      "end_time": 133.46,
+      "text": "多少个秋",
+      "nominal_end_time": 133.46,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 16,
+      "start_time": 133.46,
+      "end_time": 139.92,
+      "text": "大雪封门再送财神",
+      "nominal_end_time": 139.92,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 17,
+      "start_time": 139.92,
+      "end_time": 146.34,
+      "text": "烈火烧不尽心上的人",
+      "nominal_end_time": 146.34,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 18,
+      "start_time": 146.34,
+      "end_time": 153.22,
+      "text": "霜花满窗就在此良辰",
+      "nominal_end_time": 153.22,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 19,
+      "start_time": 153.22,
+      "end_time": 158.35,
+      "text": "我俩就定了终身",
+      "nominal_end_time": 185.32,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 20,
+      "start_time": 185.32,
+      "end_time": 191.78,
+      "text": "塞北残阳是她的红妆",
+      "nominal_end_time": 191.78,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 21,
+      "start_time": 191.78,
+      "end_time": 198.31,
+      "text": "一山松柏做伴娘",
+      "nominal_end_time": 198.31,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 22,
+      "start_time": 198.31,
+      "end_time": 205.06,
+      "text": "等她的情郎啊衣锦还乡",
+      "nominal_end_time": 205.06,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 23,
+      "start_time": 205.06,
+      "end_time": 211.36,
+      "text": "今生我只与你成双",
+      "nominal_end_time": 211.36,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 24,
+      "start_time": 211.36,
+      "end_time": 217.72,
+      "text": "锣鼓声声正月正",
+      "nominal_end_time": 217.72,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 25,
+      "start_time": 217.72,
+      "end_time": 224.19,
+      "text": "爆竹声里落尽一地红",
+      "nominal_end_time": 224.19,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 26,
+      "start_time": 224.19,
+      "end_time": 231.08,
+      "text": "家家户户都点上花灯",
+      "nominal_end_time": 231.08,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 27,
+      "start_time": 231.08,
+      "end_time": 237.11,
+      "text": "又是一年好收成",
+      "nominal_end_time": 237.11,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 28,
+      "start_time": 237.11,
+      "end_time": 244.34,
+      "text": "家家户户都点上花灯",
+      "nominal_end_time": 244.34,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 29,
+      "start_time": 244.34,
+      "end_time": 246.5,
+      "text": "又是一年好收成",
+      "nominal_end_time": 263.1,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 30,
+      "start_time": 263.1,
+      "end_time": 266.29,
+      "text": "合唱编写Choir Arranged by：何文锐@光合声动 He Wenrui@Sound Studio",
+      "nominal_end_time": 266.29,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 31,
+      "start_time": 266.29,
+      "end_time": 268.7,
+      "text": "合唱团 Choir：光合声动合唱团Sound Studio Chorus",
+      "nominal_end_time": 268.7,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 32,
+      "start_time": 268.7,
+      "end_time": 277.26,
+      "text": "何文锐 He Wenrui/张启一 Zhang Qiyi/张兆阳 Zhang Zhaoyang/刘浩然 Liu Haoran/潘辛雨 Pan Xinyu",
+      "nominal_end_time": 277.26,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 33,
+      "start_time": 277.26,
+      "end_time": 277.64,
+      "text": "音乐制作 Produced：哇唧唧哇 Wajijiwa Entertainment (Tianjin) Co., Ltd.",
+      "nominal_end_time": 277.64,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 34,
+      "start_time": 277.64,
+      "end_time": 278.44,
+      "text": "出品/母带版权公司 Production Company/OP：哇唧唧哇 Wajijiwa Entertainment (Tianjin) Co., Ltd.",
+      "nominal_end_time": 278.44,
+      "vocal_end_source": "nominal_lrc_fallback"
+    }
+  ]
+}

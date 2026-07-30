@@ -1,4 +1,5 @@
 .venv/
+.env
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -13,7 +14,8 @@ data/queries/**/*
 data/evaluation/**/*
 data/alignment_reports/**/*
 data/debug_recordings/**/*
-hum_song_mvp/data/database/**/*
+# The compact runtime F0 database is versioned so a fresh clone can recognize
+# microphone input. Source audio, vocals and generated test clips stay local.
 !data/source_audio/
 !data/source_audio/**/
 !data/source_audio/**/README.md

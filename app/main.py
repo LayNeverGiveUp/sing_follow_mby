@@ -21,8 +21,12 @@ logger = logging.getLogger("uvicorn.error")
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 DEBUG_RECORDINGS_DIR = Path(os.getenv("HUM_SONG_DEBUG_RECORDINGS_DIR", DATA_DIR / "debug_recordings"))
+QUERIES_DIR = DATA_DIR / "queries"
+# Runtime-only media is intentionally not committed. Creating the mount point
+# here keeps a fresh clone bootable even when optional one-click clips are absent.
+QUERIES_DIR.mkdir(parents=True, exist_ok=True)
 app = FastAPI(title="Hum Song Follow-up MVP", version="0.2.0")
-app.mount("/static/queries", StaticFiles(directory=DATA_DIR / "queries"), name="queries")
+app.mount("/static/queries", StaticFiles(directory=QUERIES_DIR), name="queries")
 app.mount("/demo", StaticFiles(directory=BASE_DIR / "app" / "web", html=True), name="demo")
 
 
@@ -33,11 +37,14 @@ def warm_matcher_runtime() -> None:
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, Any]:
+    song_count = len(list(hum_mvp_recognizer.database_dir.glob("*.json")))
     return {
-        "status": "ok",
+        "status": "ok" if song_count else "degraded",
+        "ready": song_count > 0,
         "service": "hum-song-followup-mvp",
         "lyrics_asr": hum_mvp_recognizer.lyrics_asr.status,
+        "song_count": song_count,
     }
 
 
@@ -75,8 +82,6 @@ def hum_mvp_test_queries() -> dict[str, list[dict[str, Any]]]:
                     "next_audio_url": f"/static/queries/mao_buyi_v1/{encoded_song_id}/line_{index + 1:03d}.wav?v={next_version}",
                 }
             )
-    if not items:
-        raise ValueError("No humming-MVP test clips are available. Run tools/build_mvp_test_queries.py first.")
     return {"items": items}
 
 

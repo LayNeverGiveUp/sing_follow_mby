@@ -1,0 +1,426 @@
+{
+  "song_id": "呓语",
+  "audio_path": "data/source_audio/mao_buyi_v1/呓语.mp3",
+  "vocal_path": "data/source_vocals/mao_buyi_v1/呓语.wav",
+  "duration": 271.074,
+  "feature_hop_seconds": 0.025,
+  "features_file": "呓语_features.npz",
+  "lrc_lines": [
+    {
+      "index": 0,
+      "start_time": 18.28,
+      "end_time": 20.17,
+      "text": "一段未醒",
+      "nominal_end_time": 20.17,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 1,
+      "start_time": 20.17,
+      "end_time": 22.46,
+      "text": "又做一段",
+      "nominal_end_time": 22.46,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 2,
+      "start_time": 22.46,
+      "end_time": 26.88,
+      "text": "如果这画面有开关",
+      "nominal_end_time": 26.88,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 3,
+      "start_time": 26.88,
+      "end_time": 30.24,
+      "text": "从期待走到不堪",
+      "nominal_end_time": 30.24,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 4,
+      "start_time": 30.24,
+      "end_time": 33.28,
+      "text": "结局不好看",
+      "nominal_end_time": 33.28,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 5,
+      "start_time": 33.28,
+      "end_time": 37.4,
+      "text": "人总需要记住遗憾",
+      "nominal_end_time": 37.4,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 6,
+      "start_time": 37.4,
+      "end_time": 46.4,
+      "text": "它来过 它走了",
+      "nominal_end_time": 46.4,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 7,
+      "start_time": 46.4,
+      "end_time": 48.39,
+      "text": "没回头 没问过",
+      "nominal_end_time": 48.39,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 8,
+      "start_time": 48.39,
+      "end_time": 53.82,
+      "text": "你可舍得",
+      "nominal_end_time": 53.82,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 9,
+      "start_time": 53.82,
+      "end_time": 55.63,
+      "text": "日月蹉跎",
+      "nominal_end_time": 55.63,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 10,
+      "start_time": 55.63,
+      "end_time": 57.95,
+      "text": "小起大落",
+      "nominal_end_time": 57.95,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 11,
+      "start_time": 57.95,
+      "end_time": 62.31,
+      "text": "光阴里有多少景色",
+      "nominal_end_time": 62.31,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 12,
+      "start_time": 62.31,
+      "end_time": 65.8,
+      "text": "偶尔也心口一热",
+      "nominal_end_time": 65.8,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 13,
+      "start_time": 65.8,
+      "end_time": 68.14,
+      "text": "什么都不说",
+      "nominal_end_time": 68.14,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 14,
+      "start_time": 68.14,
+      "end_time": 72.49,
+      "text": "好过亲手把它撕破",
+      "nominal_end_time": 72.49,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 15,
+      "start_time": 72.49,
+      "end_time": 81.9,
+      "text": "路还长 梦还多",
+      "nominal_end_time": 81.9,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 16,
+      "start_time": 81.9,
+      "end_time": 84.02,
+      "text": "被这话 欺骗的",
+      "nominal_end_time": 84.02,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 17,
+      "start_time": 84.02,
+      "end_time": 89.12,
+      "text": "何止你我",
+      "nominal_end_time": 89.12,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 18,
+      "start_time": 89.12,
+      "end_time": 93.04,
+      "text": "可是我现在依然不太会转弯",
+      "nominal_end_time": 93.04,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 19,
+      "start_time": 93.04,
+      "end_time": 97.78,
+      "text": "虽然孤单的人偶尔也想有个伴",
+      "nominal_end_time": 97.78,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 20,
+      "start_time": 97.78,
+      "end_time": 100.83,
+      "text": "冷风又吹的时候想说",
+      "nominal_end_time": 100.83,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 21,
+      "start_time": 100.83,
+      "end_time": 106.74,
+      "text": "这生活会不会有点难",
+      "nominal_end_time": 106.74,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 22,
+      "start_time": 106.74,
+      "end_time": 110.53,
+      "text": "难道是因为当初有话没讲完",
+      "nominal_end_time": 110.53,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 23,
+      "start_time": 110.53,
+      "end_time": 115.53,
+      "text": "堵在喉咙里却始终不敢大声喊",
+      "nominal_end_time": 115.53,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 24,
+      "start_time": 115.53,
+      "end_time": 116.8,
+      "text": "算了 别哭",
+      "nominal_end_time": 142.9,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 25,
+      "start_time": 142.9,
+      "end_time": 144.53,
+      "text": "日月蹉跎",
+      "nominal_end_time": 144.53,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 26,
+      "start_time": 144.53,
+      "end_time": 146.62,
+      "text": "小起大落",
+      "nominal_end_time": 146.62,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 27,
+      "start_time": 146.62,
+      "end_time": 151.11,
+      "text": "光阴里有多少景色",
+      "nominal_end_time": 151.11,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 28,
+      "start_time": 151.11,
+      "end_time": 154.67,
+      "text": "偶尔也心口一热",
+      "nominal_end_time": 154.67,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 29,
+      "start_time": 154.67,
+      "end_time": 157.5,
+      "text": "什么都不说",
+      "nominal_end_time": 157.5,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 30,
+      "start_time": 157.5,
+      "end_time": 161.85,
+      "text": "好过亲手把它撕破",
+      "nominal_end_time": 161.85,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 31,
+      "start_time": 161.85,
+      "end_time": 170.47,
+      "text": "路还长 梦还多 不多",
+      "nominal_end_time": 170.47,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 32,
+      "start_time": 170.47,
+      "end_time": 172.8,
+      "text": "被这话 欺骗的",
+      "nominal_end_time": 172.8,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 33,
+      "start_time": 172.8,
+      "end_time": 177.61,
+      "text": "何止你我",
+      "nominal_end_time": 177.61,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 34,
+      "start_time": 177.61,
+      "end_time": 181.9,
+      "text": "可是我现在依然不太会转弯",
+      "nominal_end_time": 181.9,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 35,
+      "start_time": 181.9,
+      "end_time": 186.61,
+      "text": "虽然孤单的人偶尔也想有个伴",
+      "nominal_end_time": 186.61,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 36,
+      "start_time": 186.61,
+      "end_time": 189.71,
+      "text": "冷风又吹的时候想说",
+      "nominal_end_time": 189.71,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 37,
+      "start_time": 189.71,
+      "end_time": 195.48,
+      "text": "这生活会不会有点难",
+      "nominal_end_time": 195.48,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 38,
+      "start_time": 195.48,
+      "end_time": 199.73,
+      "text": "难道是因为当初有话没讲完",
+      "nominal_end_time": 199.73,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 39,
+      "start_time": 199.73,
+      "end_time": 204.39,
+      "text": "堵在喉咙里却始终不敢大声喊",
+      "nominal_end_time": 204.39,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 40,
+      "start_time": 204.39,
+      "end_time": 211.25,
+      "text": "算了 别哭",
+      "nominal_end_time": 211.25,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 41,
+      "start_time": 211.25,
+      "end_time": 215.3,
+      "text": "可是我偏偏就是不想要转弯",
+      "nominal_end_time": 215.3,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 42,
+      "start_time": 215.3,
+      "end_time": 219.96,
+      "text": "就算不开灯的房间真的有些暗",
+      "nominal_end_time": 219.96,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 43,
+      "start_time": 219.96,
+      "end_time": 223.05,
+      "text": "夜色又来的时候想说",
+      "nominal_end_time": 223.05,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 44,
+      "start_time": 223.05,
+      "end_time": 228.96,
+      "text": "为什么只留给我一半",
+      "nominal_end_time": 228.96,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 45,
+      "start_time": 228.96,
+      "end_time": 233.16,
+      "text": "难道是因为出现的人都伪善",
+      "nominal_end_time": 233.16,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 46,
+      "start_time": 233.16,
+      "end_time": 237.8,
+      "text": "擅长告别擅长躲闪擅长分两端",
+      "nominal_end_time": 237.8,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 47,
+      "start_time": 237.8,
+      "end_time": 245.21,
+      "text": "算了 别哭",
+      "nominal_end_time": 245.21,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 48,
+      "start_time": 245.21,
+      "end_time": 251.68,
+      "text": "midi程序Midi Program：福禄寿FloruitShow",
+      "nominal_end_time": 251.68,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 49,
+      "start_time": 251.68,
+      "end_time": 260.81,
+      "text": "女高音The soprano：妮妮NIini",
+      "nominal_end_time": 260.81,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 50,
+      "start_time": 260.81,
+      "end_time": 263.4,
+      "text": "音乐制作 Produced：哇唧唧哇 Wajijiwa Entertainment (Tianjin) Co., Ltd.",
+      "nominal_end_time": 263.4,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 51,
+      "start_time": 263.4,
+      "end_time": 271.074,
+      "text": "出品/母带版权公司 Production Company/OP：哇唧唧哇 Wajijiwa Entertainment (Tianjin) Co., Ltd.",
+      "nominal_end_time": 271.074,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    }
+  ]
+}

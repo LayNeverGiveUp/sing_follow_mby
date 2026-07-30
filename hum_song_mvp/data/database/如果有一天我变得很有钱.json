@@ -1,0 +1,234 @@
+{
+  "song_id": "如果有一天我变得很有钱",
+  "audio_path": "data/source_audio/mao_buyi_v1/如果有一天我变得很有钱.mp3",
+  "vocal_path": "data/source_vocals/mao_buyi_v1/如果有一天我变得很有钱.wav",
+  "duration": 170.293,
+  "feature_hop_seconds": 0.025,
+  "features_file": "如果有一天我变得很有钱_features.npz",
+  "lrc_lines": [
+    {
+      "index": 0,
+      "start_time": 7.99,
+      "end_time": 10.79,
+      "text": "如果有一天我变得很有钱",
+      "nominal_end_time": 10.79,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 1,
+      "start_time": 10.79,
+      "end_time": 14.37,
+      "text": "我的第一选择不是去环游世界",
+      "nominal_end_time": 14.37,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 2,
+      "start_time": 14.37,
+      "end_time": 17.81,
+      "text": "躺在世界上最大最软的沙发里",
+      "nominal_end_time": 17.81,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 3,
+      "start_time": 17.81,
+      "end_time": 21.67,
+      "text": "吃了就睡醒了再吃先过一年",
+      "nominal_end_time": 21.67,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 4,
+      "start_time": 21.67,
+      "end_time": 24.6,
+      "text": "如果有一天我变得很有钱",
+      "nominal_end_time": 24.6,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 5,
+      "start_time": 24.6,
+      "end_time": 28.13,
+      "text": "我就可以把所有人都留在我身边",
+      "nominal_end_time": 28.13,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 6,
+      "start_time": 28.13,
+      "end_time": 31.68,
+      "text": "每天快快乐乐吃吃喝喝聊聊天",
+      "nominal_end_time": 31.68,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 7,
+      "start_time": 31.68,
+      "end_time": 36.68,
+      "text": "不用担心关于明天或离别",
+      "nominal_end_time": 36.68,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 8,
+      "start_time": 36.68,
+      "end_time": 40.6,
+      "text": "变有钱 我变有钱",
+      "nominal_end_time": 40.6,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 9,
+      "start_time": 40.6,
+      "end_time": 44.16,
+      "text": "多少人没日没夜地浪费时间",
+      "nominal_end_time": 44.16,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 10,
+      "start_time": 44.16,
+      "end_time": 47.86,
+      "text": "变有钱 我变有钱",
+      "nominal_end_time": 47.86,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 11,
+      "start_time": 47.86,
+      "end_time": 51.65,
+      "text": "然后故作谦虚地说金钱不是一切",
+      "nominal_end_time": 65.43,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 12,
+      "start_time": 65.43,
+      "end_time": 68.19,
+      "text": "如果有一天我变得很有钱",
+      "nominal_end_time": 68.19,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 13,
+      "start_time": 68.19,
+      "end_time": 71.8,
+      "text": "我会买下所有难得一见的笑脸",
+      "nominal_end_time": 71.8,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 14,
+      "start_time": 71.8,
+      "end_time": 75.43,
+      "text": "让所有可怜的孩子不再胆怯",
+      "nominal_end_time": 75.43,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 15,
+      "start_time": 75.43,
+      "end_time": 79.27,
+      "text": "所有邪恶的人不再掌握话语权",
+      "nominal_end_time": 79.27,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 16,
+      "start_time": 79.27,
+      "end_time": 82.14,
+      "text": "如果有一天我变得很有钱",
+      "nominal_end_time": 82.14,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 17,
+      "start_time": 82.14,
+      "end_time": 85.88,
+      "text": "我会想尽一切办法倒流时间",
+      "nominal_end_time": 85.88,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 18,
+      "start_time": 85.88,
+      "end_time": 89.32,
+      "text": "不是为了人类理想做贡献",
+      "nominal_end_time": 89.32,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 19,
+      "start_time": 89.32,
+      "end_time": 94.44,
+      "text": "只是想和她说一句我很抱歉",
+      "nominal_end_time": 94.44,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 20,
+      "start_time": 94.44,
+      "end_time": 98.4,
+      "text": "变有钱 我变有钱",
+      "nominal_end_time": 98.4,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 21,
+      "start_time": 98.4,
+      "end_time": 101.85,
+      "text": "多少人没日没夜地浪费时间",
+      "nominal_end_time": 101.85,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 22,
+      "start_time": 101.85,
+      "end_time": 105.62,
+      "text": "变有钱 我变有钱",
+      "nominal_end_time": 105.62,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 23,
+      "start_time": 105.62,
+      "end_time": 109.98,
+      "text": "然后故作谦虚地说金钱不是一切",
+      "nominal_end_time": 109.98,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 24,
+      "start_time": 109.98,
+      "end_time": 112.43,
+      "text": "我变有钱",
+      "nominal_end_time": 112.43,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 25,
+      "start_time": 112.43,
+      "end_time": 116.06,
+      "text": "所有烦恼都被留在天边",
+      "nominal_end_time": 116.06,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 26,
+      "start_time": 116.06,
+      "end_time": 119.98,
+      "text": "变有钱 我变有钱",
+      "nominal_end_time": 119.98,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 27,
+      "start_time": 119.98,
+      "end_time": 120.825,
+      "text": "然后发自内心地说金钱它不是一切",
+      "nominal_end_time": 170.293,
+      "vocal_end_source": "f0_long_silence_trim"
+    }
+  ]
+}

@@ -4,7 +4,50 @@
 
 用户清唱或哼唱 4～8 秒后，系统识别歌曲和当前歌词行，并返回下一句歌词及其开始时间。主识别由旋律完成；只有旋律无法唯一确定歌曲或歌词位置时，才条件调用 ASR 在旋律 Top-K 候选内消歧。系统不使用音频指纹、向量数据库或神经网络旋律检索。
 
-当前本地示例曲库包含毛不易的 7 首歌：《消愁》《一程山路》《东北民谣》《呓语》《如果有一天我变得很有钱》《爱情神话》和《风吟诛仙》。音频、LRC 与生成特征不提交到 Git。
+当前运行曲库包含毛不易的 7 首歌：《消愁》《一程山路》《东北民谣》《呓语》《如果有一天我变得很有钱》《爱情神话》和《风吟诛仙》。仓库提交轻量的 F0/歌词匹配数据库，保证全新 clone 可以直接识别；原始歌曲、分离人声、源 LRC 和测试录音不提交。
+
+## 全新电脑快速启动
+
+仓库已包含运行识别所需的 7 首歌 JSON/NPZ 数据库。macOS 或 Linux 安装 Python 3.10+ 后执行：
+
+```bash
+git clone git@github.com:LayNeverGiveUp/sing_follow_mby.git
+cd sing_follow_mby
+bash scripts/setup_local.sh
+bash scripts/run_local.sh
+```
+
+打开：
+
+```text
+http://127.0.0.1:8000/demo/
+```
+
+验证服务和曲库：
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+预期至少包含：
+
+```json
+{
+  "status": "ok",
+  "ready": true,
+  "song_count": 7
+}
+```
+
+这时无需原始歌曲或 LRC，CLI、WebSocket 和浏览器麦克风识别已经可用。全新 clone 不包含有版权的逐句干声，因此“一键干声测试”默认没有素材；从原电脑复制 `data/queries/`，或运行 `tools/build_mvp_test_queries.py` 后即可恢复。
+
+ASR 是旋律模糊消歧的可选增强。需要完整效果时：
+
+```bash
+cp .env.example .env
+```
+
+将火山引擎 `App ID` 和 `Access Token` 填入 `.env`，再执行 `bash scripts/run_local.sh`。不配置凭据也能启动并识别旋律唯一的输入；需要歌词消歧时会安全拒识。
 
 ## 系统架构
 
@@ -129,14 +172,19 @@ hum_song_mvp/
   tests/                    核心单元测试
 
 tools/
+  bootstrap_runtime.py          创建运行目录并校验内置曲库
   build_mvp_test_queries.py     生成一键干声测试片段
   diagnose_hum_mvp_lines.py     批量回归全部歌词行
   split_silence_cases.py        按静音切分外部清唱
   evaluate_labeled_segments.py  评估连续标注片段
   validate_song_alignment.py    入库前校验 LRC 与音频版本
+
+scripts/
+  setup_local.sh                创建虚拟环境、安装依赖并校验曲库
+  run_local.sh                  读取可选 .env 并启动服务
 ```
 
-音频和生成特征默认不提交到 Git：
+运行数据库随仓库提交，源素材和测试产物默认不提交：
 
 ```text
 data/source_audio/mao_buyi_v1/   原始歌曲混音
@@ -145,13 +193,13 @@ data/source_lyrics/mao_buyi_v1/  与音频同版本的 LRC
 data/queries/                    一键测试和外部测试片段
 data/alignment_reports/          LRC 校验报告、试听页和校正结果
 data/debug_recordings/           WebSocket 原始录音与逐次识别结果
-hum_song_mvp/data/database/      建库后的 JSON / NPZ
+hum_song_mvp/data/database/      随仓库提交的运行时 JSON / NPZ
 ```
 
 ## 环境要求
 
 - Python 3.10+
-- FFmpeg
+- FFmpeg（仅重建曲库或处理 MP3/M4A 等源文件时需要）
 - 推荐 macOS 或 Linux
 
 安装在线识别依赖：

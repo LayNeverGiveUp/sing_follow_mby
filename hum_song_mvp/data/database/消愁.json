@@ -1,0 +1,218 @@
+{
+  "song_id": "消愁",
+  "audio_path": "data/source_audio/mao_buyi_v1/消愁.mp3",
+  "vocal_path": "data/source_vocals/mao_buyi_v1/消愁.wav",
+  "duration": 179.356,
+  "feature_hop_seconds": 0.025,
+  "features_file": "消愁_features.npz",
+  "lrc_lines": [
+    {
+      "index": 0,
+      "start_time": 18.09,
+      "end_time": 22.25,
+      "text": "当你走进这欢乐场",
+      "nominal_end_time": 22.25,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 1,
+      "start_time": 22.25,
+      "end_time": 26.67,
+      "text": "背上所有的梦与想",
+      "nominal_end_time": 26.67,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 2,
+      "start_time": 26.67,
+      "end_time": 30.99,
+      "text": "各色的脸上各色的妆",
+      "nominal_end_time": 30.99,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 3,
+      "start_time": 30.99,
+      "end_time": 35.32,
+      "text": "没人记得你的模样",
+      "nominal_end_time": 35.32,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 4,
+      "start_time": 35.32,
+      "end_time": 39.77,
+      "text": "三巡酒过你在角落",
+      "nominal_end_time": 39.77,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 5,
+      "start_time": 39.77,
+      "end_time": 44.04,
+      "text": "固执地唱着苦涩的歌",
+      "nominal_end_time": 44.04,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 6,
+      "start_time": 44.04,
+      "end_time": 48.28,
+      "text": "听他在喧嚣里被淹没",
+      "nominal_end_time": 48.28,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 7,
+      "start_time": 48.28,
+      "end_time": 52.86,
+      "text": "你拿起酒杯对自己说",
+      "nominal_end_time": 52.86,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 8,
+      "start_time": 52.86,
+      "end_time": 57.21,
+      "text": "一杯敬朝阳 一杯敬月光",
+      "nominal_end_time": 57.21,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 9,
+      "start_time": 57.21,
+      "end_time": 61.03,
+      "text": "唤醒我的向往 温柔了寒窗",
+      "nominal_end_time": 61.03,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 10,
+      "start_time": 61.03,
+      "end_time": 65.89,
+      "text": "于是可以不回头地逆风飞翔",
+      "nominal_end_time": 65.89,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 11,
+      "start_time": 65.89,
+      "end_time": 70.36,
+      "text": "不怕心头有雨 眼底有霜",
+      "nominal_end_time": 70.36,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 12,
+      "start_time": 70.36,
+      "end_time": 74.61,
+      "text": "一杯敬故乡 一杯敬远方",
+      "nominal_end_time": 74.61,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 13,
+      "start_time": 74.61,
+      "end_time": 78.49,
+      "text": "守着我的善良 催着我成长",
+      "nominal_end_time": 78.49,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 14,
+      "start_time": 78.49,
+      "end_time": 83.43,
+      "text": "所以南北的路从此不再漫长",
+      "nominal_end_time": 83.43,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 15,
+      "start_time": 83.43,
+      "end_time": 87.775,
+      "text": "灵魂不再无处安放",
+      "nominal_end_time": 107.45,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 16,
+      "start_time": 107.45,
+      "end_time": 111.75,
+      "text": "一杯敬明天 一杯敬过往",
+      "nominal_end_time": 111.75,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 17,
+      "start_time": 111.75,
+      "end_time": 115.55,
+      "text": "支撑我的身体 厚重了肩膀",
+      "nominal_end_time": 115.55,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 18,
+      "start_time": 115.55,
+      "end_time": 120.51,
+      "text": "虽然从不相信所谓山高水长",
+      "nominal_end_time": 120.51,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 19,
+      "start_time": 120.51,
+      "end_time": 124.83,
+      "text": "人生苦短何必念念不忘",
+      "nominal_end_time": 124.83,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 20,
+      "start_time": 124.83,
+      "end_time": 129.22,
+      "text": "一杯敬自由 一杯敬死亡",
+      "nominal_end_time": 129.22,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 21,
+      "start_time": 129.22,
+      "end_time": 133.05,
+      "text": "宽恕我的平凡 驱散了迷惘",
+      "nominal_end_time": 133.05,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 22,
+      "start_time": 133.05,
+      "end_time": 137.87,
+      "text": "好吧天亮之后总是潦草离场",
+      "nominal_end_time": 137.87,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 23,
+      "start_time": 137.87,
+      "end_time": 141.77,
+      "text": "清醒的人最荒唐",
+      "nominal_end_time": 141.77,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 24,
+      "start_time": 141.77,
+      "end_time": 146.61,
+      "text": "好吧天亮之后总是潦草离场",
+      "nominal_end_time": 146.61,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 25,
+      "start_time": 146.61,
+      "end_time": 150.45,
+      "text": "清醒的人最荒唐",
+      "nominal_end_time": 179.356,
+      "vocal_end_source": "f0_long_silence_trim"
+    }
+  ]
+}

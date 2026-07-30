@@ -1,0 +1,298 @@
+{
+  "song_id": "风吟诛仙",
+  "audio_path": "data/source_audio/mao_buyi_v1/风吟诛仙.mp3",
+  "vocal_path": "data/source_vocals/mao_buyi_v1/风吟诛仙.wav",
+  "duration": 243.0,
+  "feature_hop_seconds": 0.025,
+  "features_file": "风吟诛仙_features.npz",
+  "lrc_lines": [
+    {
+      "index": 0,
+      "start_time": 10.5,
+      "end_time": 11.15,
+      "text": "笛子：罗萌",
+      "nominal_end_time": 11.15,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 1,
+      "start_time": 11.15,
+      "end_time": 11.92,
+      "text": "箫：罗萌",
+      "nominal_end_time": 11.92,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 2,
+      "start_time": 11.92,
+      "end_time": 13.25,
+      "text": "古筝：杜峥萌",
+      "nominal_end_time": 13.25,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 3,
+      "start_time": 13.25,
+      "end_time": 14.87,
+      "text": "民乐录音：杨惠琳@Studio 21A",
+      "nominal_end_time": 14.87,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 4,
+      "start_time": 14.87,
+      "end_time": 17.5,
+      "text": "和音：魏大海@Jlseven",
+      "nominal_end_time": 17.5,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 5,
+      "start_time": 17.5,
+      "end_time": 21.18,
+      "text": "大提琴：郎莹",
+      "nominal_end_time": 21.18,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 6,
+      "start_time": 21.18,
+      "end_time": 22.14,
+      "text": "Vocal Edit：汝文博@SMBS Beijing",
+      "nominal_end_time": 22.14,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 7,
+      "start_time": 22.14,
+      "end_time": 23.0,
+      "text": "主唱录音师：李杨@55TEC",
+      "nominal_end_time": 23.0,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 8,
+      "start_time": 23.0,
+      "end_time": 29.08,
+      "text": "主唱录音棚：55tec",
+      "nominal_end_time": 29.08,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 9,
+      "start_time": 29.08,
+      "end_time": 34.9,
+      "text": "悲与欢 把人间看透",
+      "nominal_end_time": 34.9,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 10,
+      "start_time": 34.9,
+      "end_time": 40.78,
+      "text": "却从不让 有情人重逢",
+      "nominal_end_time": 40.78,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 11,
+      "start_time": 40.78,
+      "end_time": 46.85,
+      "text": "剑痕深 深不过离愁",
+      "nominal_end_time": 46.85,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 12,
+      "start_time": 46.85,
+      "end_time": 51.86,
+      "text": "风吹满庭叶 终难休",
+      "nominal_end_time": 51.86,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 13,
+      "start_time": 51.86,
+      "end_time": 57.87,
+      "text": "是我把自己遗忘在遗憾中",
+      "nominal_end_time": 57.87,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 14,
+      "start_time": 57.87,
+      "end_time": 63.49,
+      "text": "如何忘你凝泪的双眸",
+      "nominal_end_time": 63.49,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 15,
+      "start_time": 63.49,
+      "end_time": 69.5,
+      "text": "这一生沉浮 为一人孤注",
+      "nominal_end_time": 69.5,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 16,
+      "start_time": 69.5,
+      "end_time": 75.25,
+      "text": "我眼中落魄 是入了你的魔",
+      "nominal_end_time": 75.25,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 17,
+      "start_time": 75.25,
+      "end_time": 81.94,
+      "text": "诛遍仙邪与沧桑 却难逃被情诛",
+      "nominal_end_time": 81.94,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 18,
+      "start_time": 81.94,
+      "end_time": 87.07,
+      "text": "你一转身 我满盘皆输",
+      "nominal_end_time": 87.07,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 19,
+      "start_time": 87.07,
+      "end_time": 92.95,
+      "text": "不惧血躯向苍天 从此万劫不复",
+      "nominal_end_time": 92.95,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 20,
+      "start_time": 92.95,
+      "end_time": 99.725,
+      "text": "天涯路 你是唯一的归宿",
+      "nominal_end_time": 123.25,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 21,
+      "start_time": 123.25,
+      "end_time": 128.71,
+      "text": "朝与暮 往事里迷路",
+      "nominal_end_time": 128.71,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 22,
+      "start_time": 128.71,
+      "end_time": 134.51,
+      "text": "海誓山盟 都困于世俗",
+      "nominal_end_time": 134.51,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 23,
+      "start_time": 134.51,
+      "end_time": 140.28,
+      "text": "岁月长 长不过等候",
+      "nominal_end_time": 140.28,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 24,
+      "start_time": 140.28,
+      "end_time": 145.64,
+      "text": "庭树叶纷纷 又一秋",
+      "nominal_end_time": 145.64,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 25,
+      "start_time": 145.64,
+      "end_time": 152.15,
+      "text": "诛遍仙邪与沧桑 却难逃被情诛",
+      "nominal_end_time": 152.15,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 26,
+      "start_time": 152.15,
+      "end_time": 157.39,
+      "text": "你一转身 我满盘皆输",
+      "nominal_end_time": 157.39,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 27,
+      "start_time": 157.39,
+      "end_time": 163.17,
+      "text": "不惧血躯向苍天 从此万劫不复",
+      "nominal_end_time": 163.17,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 28,
+      "start_time": 163.17,
+      "end_time": 168.55,
+      "text": "天涯路 你是唯一的归宿",
+      "nominal_end_time": 168.55,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 29,
+      "start_time": 168.55,
+      "end_time": 174.73,
+      "text": "为你拾起 一身傲骨",
+      "nominal_end_time": 174.73,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 30,
+      "start_time": 174.73,
+      "end_time": 183.54,
+      "text": "无惧为你 粉身碎骨",
+      "nominal_end_time": 183.54,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 31,
+      "start_time": 183.54,
+      "end_time": 190.12,
+      "text": "诛遍千思和万绪 诉不尽痴情苦",
+      "nominal_end_time": 190.12,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 32,
+      "start_time": 190.12,
+      "end_time": 195.43,
+      "text": "无关风月 也义无反顾",
+      "nominal_end_time": 195.43,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 33,
+      "start_time": 195.43,
+      "end_time": 201.21,
+      "text": "三生七世永堕落 宁愿执迷不悟",
+      "nominal_end_time": 201.21,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 34,
+      "start_time": 201.21,
+      "end_time": 210.01,
+      "text": "风又起 依稀梦中闻铃处",
+      "nominal_end_time": 210.01,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 35,
+      "start_time": 210.01,
+      "end_time": 214.25,
+      "text": "这条路 你是最终和最初",
+      "nominal_end_time": 243.0,
+      "vocal_end_source": "f0_long_silence_trim"
+    }
+  ]
+}

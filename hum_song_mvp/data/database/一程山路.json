@@ -1,0 +1,178 @@
+{
+  "song_id": "一程山路",
+  "audio_path": "data/source_audio/mao_buyi_v1/一程山路.mp3",
+  "vocal_path": "data/source_vocals/mao_buyi_v1/一程山路.wav",
+  "duration": 197.3,
+  "feature_hop_seconds": 0.025,
+  "features_file": "一程山路_features.npz",
+  "lrc_lines": [
+    {
+      "index": 0,
+      "start_time": 28.0,
+      "end_time": 34.11,
+      "text": "青石板留着谁的梦啊",
+      "nominal_end_time": 34.11,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 1,
+      "start_time": 34.11,
+      "end_time": 41.75,
+      "text": "一场秋雨 又落一地花",
+      "nominal_end_time": 41.75,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 2,
+      "start_time": 41.75,
+      "end_time": 49.53,
+      "text": "旅人匆匆地赶路啊",
+      "nominal_end_time": 49.53,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 3,
+      "start_time": 49.53,
+      "end_time": 54.93,
+      "text": "走四季 访人家",
+      "nominal_end_time": 54.93,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 4,
+      "start_time": 54.93,
+      "end_time": 62.02,
+      "text": "如同昨夜天光乍破了远山的轮廓",
+      "nominal_end_time": 62.02,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 5,
+      "start_time": 62.02,
+      "end_time": 69.79,
+      "text": "想起很久之前我们都忘了说",
+      "nominal_end_time": 69.79,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 6,
+      "start_time": 69.79,
+      "end_time": 76.94,
+      "text": "一叶曲折过后 又一道坎坷",
+      "nominal_end_time": 76.94,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 7,
+      "start_time": 76.94,
+      "end_time": 104.225,
+      "text": "走不出 看不破",
+      "nominal_end_time": 111.52,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 8,
+      "start_time": 111.52,
+      "end_time": 117.68,
+      "text": "山谷的薄雾吻着烟霞",
+      "nominal_end_time": 117.68,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 9,
+      "start_time": 117.68,
+      "end_time": 125.16,
+      "text": "枯叶之下 藏多少情话",
+      "nominal_end_time": 125.16,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 10,
+      "start_time": 125.16,
+      "end_time": 132.73,
+      "text": "划破天空的归鸟啊",
+      "nominal_end_time": 132.73,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 11,
+      "start_time": 132.73,
+      "end_time": 138.65,
+      "text": "它不问 你不答",
+      "nominal_end_time": 138.65,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 12,
+      "start_time": 138.65,
+      "end_time": 145.47,
+      "text": "如同昨夜天光乍破了远山的轮廓",
+      "nominal_end_time": 145.47,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 13,
+      "start_time": 145.47,
+      "end_time": 153.44,
+      "text": "想起很久之前我们都忘了说",
+      "nominal_end_time": 153.44,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 14,
+      "start_time": 153.44,
+      "end_time": 160.64,
+      "text": "一叶曲折过后 又一道坎坷",
+      "nominal_end_time": 160.64,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 15,
+      "start_time": 160.64,
+      "end_time": 166.27,
+      "text": "走不出 看不破",
+      "nominal_end_time": 166.27,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 16,
+      "start_time": 166.27,
+      "end_time": 173.43,
+      "text": "潺潺流水终于穿过了群山一座座",
+      "nominal_end_time": 173.43,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 17,
+      "start_time": 173.43,
+      "end_time": 181.06,
+      "text": "好像多年之后你依然执着",
+      "nominal_end_time": 181.06,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 18,
+      "start_time": 181.06,
+      "end_time": 188.48,
+      "text": "白云是否也听过你的诉说",
+      "nominal_end_time": 188.48,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 19,
+      "start_time": 188.48,
+      "end_time": 195.14,
+      "text": "笑着你 笑着我",
+      "nominal_end_time": 195.14,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 20,
+      "start_time": 195.14,
+      "end_time": 197.3,
+      "text": "白云是否也听过你的诉说",
+      "nominal_end_time": 197.3,
+      "vocal_end_source": "nominal_lrc_fallback"
+    }
+  ]
+}

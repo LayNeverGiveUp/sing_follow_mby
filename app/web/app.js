@@ -2,6 +2,7 @@ const state = {
   running: false,
   recorder: null,
   testItems: null,
+  testClipsAvailable: null,
   remainingTestItems: [],
   selectedTest: null,
   recordedAudioUrl: null,
@@ -98,7 +99,7 @@ function reasonMessage(reason) {
 }
 
 function setButtonsDisabled(disabled) {
-  els.vocalTestButton.disabled = disabled;
+  els.vocalTestButton.disabled = disabled || state.testClipsAvailable === false;
   els.clearButton.disabled = disabled;
   if (!state.recorder) els.recordButton.disabled = disabled;
 }
@@ -175,13 +176,19 @@ function audioContext() {
   return new Context({ sampleRate: 16000 });
 }
 
-async function selectRandomTest() {
+async function loadTestItems() {
   if (!state.testItems) {
     const response = await fetch("/v1/hum-mvp/test-queries", { cache: "no-store" });
     if (!response.ok) throw new Error("测试句库加载失败");
     const payload = await response.json();
     state.testItems = payload.items || [];
+    state.testClipsAvailable = state.testItems.length > 0;
   }
+  return state.testItems;
+}
+
+async function selectRandomTest() {
+  await loadTestItems();
   if (!state.testItems.length) throw new Error("没有可用的带下一句测试素材");
   if (!state.remainingTestItems.length) {
     state.remainingTestItems = shuffle(state.testItems);
@@ -391,3 +398,11 @@ els.vocalTestButton.addEventListener("click", sendVocalTest);
 els.recordButton.addEventListener("click", () => (state.recorder ? stopRecording() : startRecording()));
 els.clearButton.addEventListener("click", clearResult);
 clearResult();
+loadTestItems()
+  .then((items) => {
+    if (items.length) return;
+    els.vocalTestButton.disabled = true;
+    els.vocalTestButton.textContent = "干声素材未安装";
+    els.queryLabel.textContent = "当前仓库未包含可选干声片段；麦克风录音识别仍可正常使用。";
+  })
+  .catch((error) => logEvent("测试素材状态检查失败", String(error?.message || error)));

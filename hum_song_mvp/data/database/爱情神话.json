@@ -1,0 +1,250 @@
+{
+  "song_id": "爱情神话",
+  "audio_path": "data/source_audio/mao_buyi_v1/爱情神话.mp3",
+  "vocal_path": "data/source_vocals/mao_buyi_v1/爱情神话.wav",
+  "duration": 266.777,
+  "feature_hop_seconds": 0.025,
+  "features_file": "爱情神话_features.npz",
+  "lrc_lines": [
+    {
+      "index": 0,
+      "start_time": 10.27,
+      "end_time": 12.48,
+      "text": "主唱录音：克昶 @55TEC",
+      "nominal_end_time": 12.48,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 1,
+      "start_time": 12.48,
+      "end_time": 14.25,
+      "text": "音乐编辑：汝文博 @SBMS Beijing/克昶 @ELEVENZMUCIC",
+      "nominal_end_time": 14.25,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 2,
+      "start_time": 14.25,
+      "end_time": 16.21,
+      "text": "制作统筹：翟佳/徐青 @ELEVENZMUSIC/许夙 @ELEVENZMUSIC",
+      "nominal_end_time": 16.21,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 3,
+      "start_time": 16.21,
+      "end_time": 18.24,
+      "text": "制作助理：克昶 @ELEVENZMUSIC",
+      "nominal_end_time": 18.24,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 4,
+      "start_time": 18.24,
+      "end_time": 22.33,
+      "text": "项目监制：關丙晙楹@TME制造/罗悦菱Shirley@TME制造/佟贺@TME制造",
+      "nominal_end_time": 22.33,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 5,
+      "start_time": 22.33,
+      "end_time": 25.93,
+      "text": "音乐出品：腾讯音乐娱乐 (制作家工作室)/麦特文化",
+      "nominal_end_time": 25.93,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 6,
+      "start_time": 25.93,
+      "end_time": 26.9,
+      "text": "制作公司：十一音乐/听见时代",
+      "nominal_end_time": 26.9,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 7,
+      "start_time": 26.9,
+      "end_time": 29.99,
+      "text": "营销公司：北京听见时代娱乐传媒有限公司",
+      "nominal_end_time": 29.99,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 8,
+      "start_time": 29.99,
+      "end_time": 38.4,
+      "text": "人潮 流过街头巷尾",
+      "nominal_end_time": 38.4,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 9,
+      "start_time": 38.4,
+      "end_time": 42.475,
+      "text": "哪家店又排队 身影像谁",
+      "nominal_end_time": 48.44,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 10,
+      "start_time": 48.44,
+      "end_time": 57.59,
+      "text": "Oh 生活 慢慢平淡琐碎",
+      "nominal_end_time": 57.59,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 11,
+      "start_time": 57.59,
+      "end_time": 61.875,
+      "text": "一度以为不再 需要人陪",
+      "nominal_end_time": 68.9,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 12,
+      "start_time": 68.9,
+      "end_time": 78.51,
+      "text": "你的笑声 让我有安慰",
+      "nominal_end_time": 78.51,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 13,
+      "start_time": 78.51,
+      "end_time": 86.71,
+      "text": "逐渐学着 重新和自己面对",
+      "nominal_end_time": 86.71,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 14,
+      "start_time": 86.71,
+      "end_time": 95.96,
+      "text": "回忆纷纷 清晨到黄昏",
+      "nominal_end_time": 95.96,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 15,
+      "start_time": 95.96,
+      "end_time": 105.95,
+      "text": "何不承认 从未老的灵魂",
+      "nominal_end_time": 105.95,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 16,
+      "start_time": 105.95,
+      "end_time": 115.04,
+      "text": "命运兜转 经历多少离分",
+      "nominal_end_time": 115.04,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 17,
+      "start_time": 115.04,
+      "end_time": 116.15,
+      "text": "夜路尽头 总会有一扇门",
+      "nominal_end_time": 145.71,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 18,
+      "start_time": 145.71,
+      "end_time": 155.3,
+      "text": "你的笑声 让我有安慰",
+      "nominal_end_time": 155.3,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 19,
+      "start_time": 155.3,
+      "end_time": 163.49,
+      "text": "逐渐学着 重新和自己面对",
+      "nominal_end_time": 163.49,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 20,
+      "start_time": 163.49,
+      "end_time": 172.71,
+      "text": "回忆纷纷 清晨到黄昏",
+      "nominal_end_time": 172.71,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 21,
+      "start_time": 172.71,
+      "end_time": 182.72,
+      "text": "何不承认 从未老的灵魂",
+      "nominal_end_time": 182.72,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 22,
+      "start_time": 182.72,
+      "end_time": 192.01,
+      "text": "命运兜转 经历多少离分",
+      "nominal_end_time": 192.01,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 23,
+      "start_time": 192.01,
+      "end_time": 195.15,
+      "text": "夜路尽头 总会有一扇门",
+      "nominal_end_time": 204.29,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 24,
+      "start_time": 204.29,
+      "end_time": 213.56,
+      "text": "故事纷纷 飞扬的星辰",
+      "nominal_end_time": 213.56,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 25,
+      "start_time": 213.56,
+      "end_time": 215.875,
+      "text": "选择相信 庆幸的是我们",
+      "nominal_end_time": 223.56,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 26,
+      "start_time": 223.56,
+      "end_time": 232.73,
+      "text": "光阴辗转 至少相拥动人",
+      "nominal_end_time": 232.73,
+      "vocal_end_source": "nominal_lrc_normal_duration"
+    },
+    {
+      "index": 27,
+      "start_time": 232.73,
+      "end_time": 235.025,
+      "text": "爱情神话 依旧温暖留存",
+      "nominal_end_time": 243.48,
+      "vocal_end_source": "f0_long_silence_trim"
+    },
+    {
+      "index": 28,
+      "start_time": 243.48,
+      "end_time": 252.09,
+      "text": "晚风 吹过璀璨都会",
+      "nominal_end_time": 252.09,
+      "vocal_end_source": "nominal_lrc_fallback"
+    },
+    {
+      "index": 29,
+      "start_time": 252.09,
+      "end_time": 266.777,
+      "text": "迎面来的剪影 路灯微微",
+      "nominal_end_time": 266.777,
+      "vocal_end_source": "nominal_lrc_fallback"
+    }
+  ]
+}
