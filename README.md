@@ -433,6 +433,400 @@ http://127.0.0.1:8000/demo/regression.html
 
 录音与运行报告默认写入 `data/evaluation/`，该目录被 Git 忽略，不会把用户声音或 ASR 文本提交到仓库。
 
+## 腾讯云 CVM 后端生产部署
+
+本节面向负责部署的同事，目标拓扑为：
+
+```text
+浏览器 / 客户端
+        │ HTTPS + WSS :443
+        ▼
+腾讯云安全组
+        ▼
+Nginx（TLS 终止、WebSocket 反向代理）
+        │ HTTP :8000（仅 127.0.0.1）
+        ▼
+systemd → Uvicorn → FastAPI
+        ├── 本地 F0 / DTW 曲库
+        └── HTTPS 出站 → 火山引擎 ASR
+```
+
+### 交付前需要确认
+
+部署同事开始前，应向项目负责人确认：
+
+- 腾讯云地域和 CVM 公网 IP；
+- 对外域名，例如 `sing-api.example.com`；
+- 域名是否已经完成 DNS 解析；
+- 火山引擎 `App ID` 和 `Access Token` 的安全交付方式；
+- 调试录音是否允许保存，以及保存天数；
+- 是否需要部署浏览器演示页和 255 个一键测试 WAV。
+
+如果选择腾讯云中国大陆地域，域名对公网提供服务前必须完成 ICP 备案；已经在其他服务商备案的域名迁移到腾讯云大陆服务器时，还需要完成腾讯云接入备案。腾讯云官方说明见[快速备案](https://cloud.tencent.com/document/product/243/39038)和[备案概述](https://cloud.tencent.com/document/api/243/18907)。非中国大陆地域不适用大陆服务器的这项接入要求。
+
+### 1. CVM 建议规格
+
+当前在线识别包含 pYIN、两路 DTW 和可选云端 ASR，主要消耗 CPU，不需要 GPU。
+
+- 操作系统：Ubuntu Server 22.04 LTS x86_64；
+- 推荐起步：4 vCPU、8 GB 内存、50 GB 高性能云硬盘；
+- 多人同时测试：建议至少 8 vCPU、16 GB，并先做并发压测；
+- 公网带宽：起步 5 Mbps，按实际并发和录音长度调整；
+- 登录方式：使用 SSH 密钥，不使用长期共享密码。
+
+当前代码按单机低并发场景验证。不要直接给 Uvicorn 增加多个 worker：每个 worker 都会单独加载曲库、预热 Numba/DTW 并建立自己的线程池，内存和 CPU 会成倍增加。需要扩容时，优先使用多台相同 CVM 加负载均衡，并在压测后确定实例数。
+
+腾讯云建议使用最小权限安全组、SSH 密钥和云硬盘/快照，参考[CVM 最佳实践](https://cloud.tencent.com/document/product/213/5421/)。
+
+### 2. 配置腾讯云安全组
+
+在 CVM 绑定的安全组中配置入站规则：
+
+| 协议端口 | 来源 | 用途 |
+|---|---|---|
+| TCP:22 | 部署人员的固定公网 IP | SSH 运维 |
+| TCP:80 | `0.0.0.0/0`、`::/0` | HTTP 跳转 HTTPS |
+| TCP:443 | `0.0.0.0/0`、`::/0` | HTTPS / WSS |
+
+不要在安全组中开放 TCP:8000。Uvicorn 只监听 `127.0.0.1:8000`，公网流量必须经过 Nginx。
+
+出站至少允许 TCP:443，用于：
+
+- 下载 GitHub 代码和可选测试素材；
+- 调用火山引擎 ASR；
+- 安装 Python 依赖。
+
+安全组规则配置参考腾讯云官方的[添加安全组规则](https://cloud.tencent.com/document/product/213/112614/)；腾讯云也建议只放通业务需要的端口，不要使用“全端口放通”作为长期配置。
+
+### 3. 初始化 Ubuntu
+
+以下命令均在 CVM 上执行：
+
+```bash
+sudo apt update
+sudo apt install -y \
+  git curl ca-certificates \
+  python3 python3-venv python3-pip \
+  nginx libsndfile1
+```
+
+创建独立服务账号和目录：
+
+```bash
+sudo adduser --system --group --home /home/singfollow singfollow
+sudo install -d -o singfollow -g singfollow /opt/sing_follow
+sudo install -d -m 0750 -o singfollow -g singfollow \
+  /var/lib/sing-follow/debug-recordings
+```
+
+拉取代码：
+
+```bash
+sudo -u singfollow git clone \
+  https://github.com/LayNeverGiveUp/sing_follow_mby.git \
+  /opt/sing_follow
+
+cd /opt/sing_follow
+sudo -u singfollow git switch main
+```
+
+如果只部署后端麦克风识别，可以跳过约 160 MB 的逐句测试 WAV：
+
+```bash
+sudo -u singfollow env INSTALL_QUERY_ASSETS=0 bash scripts/setup_local.sh
+```
+
+如果需要演示页中的“一键干声测试”和人工回归录制页，则执行：
+
+```bash
+sudo -u singfollow bash scripts/setup_local.sh
+```
+
+两种方式都会安装 Python 依赖、创建 `.venv`、校验随仓库发布的 7 首歌运行数据库，并创建运行目录。
+
+### 4. 配置生产环境变量
+
+创建生产 `.env`：
+
+```bash
+cd /opt/sing_follow
+sudo -u singfollow cp .env.example .env
+sudo -u singfollow nano .env
+sudo chmod 600 .env
+sudo chown singfollow:singfollow .env
+```
+
+填写：
+
+```dotenv
+VOLCENGINE_ASR_ACCESS_TOKEN=替换为真实AccessToken
+VOLCENGINE_ASR_APP_ID=替换为真实AppID
+VOLCENGINE_ASR_RESOURCE_ID=volc.seedasr.auc
+
+HUM_HOST=127.0.0.1
+HUM_PORT=8000
+HUM_SONG_DEBUG_RECORDINGS_DIR=/var/lib/sing-follow/debug-recordings
+```
+
+要求：
+
+- 不要把 `.env` 内容发到群聊、工单正文或 Git；
+- 不要把 Token 写进 systemd unit、Nginx 配置或源码；
+- 生产与开发使用不同凭据；
+- 凭据泄露后立即在火山引擎控制台轮换。
+
+### 5. 配置 systemd 常驻服务
+
+创建 `/etc/systemd/system/sing-follow.service`：
+
+```ini
+[Unit]
+Description=Sing Follow FastAPI Service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=singfollow
+Group=singfollow
+WorkingDirectory=/opt/sing_follow
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/bin/bash /opt/sing_follow/scripts/run_local.sh
+Restart=always
+RestartSec=5
+TimeoutStartSec=180
+TimeoutStopSec=30
+KillSignal=SIGINT
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
+```
+
+加载并启动：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now sing-follow
+sudo systemctl status sing-follow --no-pager
+```
+
+首次启动会执行 librosa/Numba 和 DTW 预热，可能比普通重启稍慢。先在服务器本机验证：
+
+```bash
+curl --fail --silent http://127.0.0.1:8000/health
+```
+
+预期：
+
+```json
+{
+  "status": "ok",
+  "ready": true,
+  "service": "hum-song-followup-mvp",
+  "lyrics_asr": "volcengine_auc",
+  "song_count": 7
+}
+```
+
+如果 `lyrics_asr` 为 `missing_credentials`，检查 `.env` 的变量名、文件权限和服务是否已重启。
+
+### 6. 配置域名、证书和 Nginx
+
+先把域名 A 记录解析到 CVM 公网 IP。生产浏览器麦克风需要安全上下文，因此必须使用 HTTPS；WebSocket 会自动使用 WSS。
+
+可在腾讯云 SSL 证书控制台申请证书并下载 Nginx 格式文件。将证书和私钥放到：
+
+```text
+/etc/nginx/ssl/YOUR_DOMAIN_bundle.crt
+/etc/nginx/ssl/YOUR_DOMAIN.key
+```
+
+证书部署流程参考腾讯云官方的[Nginx 服务器 SSL 证书安装部署](https://cloud.tencent.com/document/product/400/35244)。
+
+创建 `/etc/nginx/sites-available/sing-follow`，把三处 `YOUR_DOMAIN` 替换为真实域名：
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name YOUR_DOMAIN;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name YOUR_DOMAIN;
+
+    ssl_certificate     /etc/nginx/ssl/YOUR_DOMAIN_bundle.crt;
+    ssl_certificate_key /etc/nginx/ssl/YOUR_DOMAIN.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    client_max_body_size 20m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_buffering off;
+    }
+}
+```
+
+启用配置：
+
+```bash
+sudo ln -s /etc/nginx/sites-available/sing-follow \
+  /etc/nginx/sites-enabled/sing-follow
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+如果服务器启用了 UFW：
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow "Nginx Full"
+sudo ufw enable
+sudo ufw status
+```
+
+### 7. 上线验证
+
+依次执行：
+
+```bash
+curl --fail --silent http://127.0.0.1:8000/health
+curl --fail --silent https://YOUR_DOMAIN/health
+sudo systemctl is-active sing-follow
+sudo systemctl is-active nginx
+```
+
+浏览器验证：
+
+```text
+https://YOUR_DOMAIN/demo/
+```
+
+检查项：
+
+- 页面可以申请麦克风权限；
+- WebSocket 请求使用 `wss://YOUR_DOMAIN/v1/realtime-match`；
+- 返回 `accepted`、当前歌词和下一句；
+- `latency_ms.end_to_result` 有值；
+- `debug_case_id` 能在服务器调试录音目录中找到；
+- Nginx 和后端日志无 4xx/5xx 或 ASR 鉴权错误。
+
+如果安装了固定十句本地录音，可以从服务器执行：
+
+```bash
+cd /opt/sing_follow
+sudo -u singfollow .venv/bin/python tools/evaluate_service_rt.py \
+  --url wss://YOUR_DOMAIN/v1/realtime-match \
+  --report data/evaluation/regression_report_service.json
+```
+
+不要把录音和生成的报告提交到 Git。
+
+### 8. 日志、录音与隐私
+
+查看后端日志：
+
+```bash
+sudo journalctl -u sing-follow -f
+sudo journalctl -u sing-follow --since "30 minutes ago"
+```
+
+查看 Nginx 日志：
+
+```bash
+sudo tail -f /var/log/nginx/access.log
+sudo tail -f /var/log/nginx/error.log
+```
+
+当前服务默认保存每次 WebSocket 收到的 PCM16、请求元数据和识别结果。生产上线前必须得到明确授权并确定保留周期。示例：删除 7 天前的录音文件，并清理空目录：
+
+```bash
+sudo find /var/lib/sing-follow/debug-recordings \
+  -type f -mtime +7 -delete
+sudo find /var/lib/sing-follow/debug-recordings \
+  -depth -mindepth 1 -type d -empty -delete
+```
+
+应由部署同事将清理命令配置为 cron 或 systemd timer，并根据业务隐私要求调整 `7`。禁止将该目录暴露为 Nginx 静态目录。
+
+### 9. 更新与回滚
+
+更新前记录当前版本：
+
+```bash
+cd /opt/sing_follow
+sudo -u singfollow git rev-parse HEAD
+```
+
+快进更新并重新安装可能变化的依赖：
+
+```bash
+cd /opt/sing_follow
+sudo -u singfollow git switch main
+sudo -u singfollow git pull --ff-only origin main
+sudo -u singfollow .venv/bin/python -m pip install -r requirements.txt
+sudo -u singfollow .venv/bin/python tools/bootstrap_runtime.py
+
+sudo systemctl restart sing-follow
+curl --fail --silent http://127.0.0.1:8000/health
+```
+
+如果新版本验证失败，切回更新前记录的提交：
+
+```bash
+cd /opt/sing_follow
+sudo -u singfollow git switch --detach PREVIOUS_COMMIT_SHA
+sudo systemctl restart sing-follow
+curl --fail --silent http://127.0.0.1:8000/health
+```
+
+问题修复后回到主分支：
+
+```bash
+cd /opt/sing_follow
+sudo -u singfollow git switch main
+sudo systemctl restart sing-follow
+```
+
+`.env`、调试录音和 `data/evaluation/` 均不在 Git 中，更新或回滚代码时不要删除这些文件。建议在大版本更新前创建腾讯云云硬盘快照。
+
+### 10. 常见故障
+
+| 现象 | 优先检查 |
+|---|---|
+| `502 Bad Gateway` | `systemctl status sing-follow`、127.0.0.1:8000 是否监听 |
+| WebSocket 连接后立即断开 | Nginx `Upgrade` / `Connection` 请求头和 120 秒超时 |
+| 浏览器无法申请麦克风 | 是否通过 HTTPS 访问、证书链是否完整 |
+| `/health` 显示 `song_count: 0` | `hum_song_mvp/data/database` 是否完整 |
+| `/health` 显示 `missing_credentials` | `.env` 变量名、权限、服务重启 |
+| ASR 请求报错 | CVM 出站 443、火山引擎配额和凭据状态 |
+| 首次请求特别慢 | systemd 启动日志中是否出现 `hum_mvp_matcher_warmed` |
+| RT 明显高于本地 | CVM vCPU 规格、CPU steal、并发量和 ASR 网络延迟 |
+| 磁盘持续增长 | 调试录音清理任务是否正常执行 |
+
+部署完成后，交付人应把以下信息发给项目负责人：域名、CVM 实例 ID、部署提交 SHA、健康检查结果、systemd 服务名、日志查看命令、录音保留策略和回滚提交 SHA；不得在交付信息中包含 ASR Token。
+
 ## CLI 识别
 
 ```bash
