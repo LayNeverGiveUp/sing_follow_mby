@@ -229,6 +229,53 @@ def test_asr_reranks_only_melody_shortlisted_songs():
     assert fake.calls == 1
 
 
+def test_cross_song_asr_expands_to_non_top_line_inside_shortlisted_song():
+    wrong = {
+        "song_id": "wrong_song",
+        "feature_hop_seconds": 0.025,
+        "lrc_lines": [
+            {"index": 0, "start_time": 10.0, "end_time": 12.0, "text": "错误歌词"},
+            {"index": 1, "start_time": 12.0, "end_time": 14.0, "text": "错误下一句"},
+        ],
+    }
+    correct = {
+        "song_id": "correct_song",
+        "feature_hop_seconds": 0.025,
+        "lrc_lines": [
+            {"index": 0, "start_time": 20.0, "end_time": 23.0, "text": "目标歌词"},
+            {"index": 1, "start_time": 23.0, "end_time": 25.0, "text": "旋律误召回行"},
+        ],
+    }
+    candidates = [
+        PhraseCandidate(wrong, phrase_result(0, 0.50)),
+        PhraseCandidate(correct, phrase_result(1, 0.52, 920, 1000)),
+    ]
+    diagnostics = {"stage_ms": {}}
+    fake = FakeAsr("目标歌词")
+
+    resolved, reason = _resolve_cross_song_position(
+        np.ones(16000, dtype=np.float32) * 0.1,
+        _best_phrase_candidates_by_song(candidates),
+        candidates,
+        0.02,
+        load_config(),
+        fake,
+        diagnostics,
+    )
+
+    assert reason is None
+    assert resolved is not None
+    assert resolved.metadata["song_id"] == "correct_song"
+    assert resolved.lyrics["current_lyric_index"] == 0
+    assert fake.calls == 1
+    exact = next(
+        item
+        for item in diagnostics["cross_song_position_candidates"]
+        if item["song_id"] == "correct_song" and item["line_index"] == 0
+    )
+    assert exact["lyric_text"] == "目标歌词"
+
+
 def test_strong_frame_phrase_agreement_keeps_frame_line_position():
     first = metadata()
     second = {**metadata(), "song_id": "other_song"}

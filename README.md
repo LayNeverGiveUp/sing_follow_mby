@@ -2,7 +2,7 @@
 
 这是一个面向单歌手、有限歌曲库的非流式旋律识别服务。
 
-用户清唱或哼唱 4～8 秒后，系统识别歌曲和当前歌词行，并返回下一句歌词及其开始时间。主识别由旋律完成；只有旋律无法唯一确定歌曲或歌词位置时，才条件调用 ASR 在旋律 Top-K 候选内消歧。系统不使用音频指纹、向量数据库或神经网络旋律检索。
+用户清唱或哼唱 4～8 秒后，系统识别歌曲和当前歌词行，并返回下一句歌词及其开始时间。主识别由旋律完成；配置 ASR 后，ASR 会与旋律匹配并行预取，但结果只在旋律无法唯一确定歌曲或歌词位置时用于 Top-K 候选消歧。系统不使用音频指纹、向量数据库或神经网络旋律检索。
 
 当前运行曲库包含毛不易的 7 首歌：《消愁》《一程山路》《东北民谣》《呓语》《如果有一天我变得很有钱》《爱情神话》和《风吟诛仙》。仓库提交轻量的 F0/歌词匹配数据库，逐句测试干声通过公开 GitHub Release 分发；原始歌曲、整曲分离人声、源 LRC 和用户录音不提交。
 
@@ -55,7 +55,7 @@ INSTALL_QUERY_ASSETS=0 bash scripts/setup_local.sh
 .venv/bin/python tools/install_query_assets.py
 ```
 
-ASR 是旋律模糊消歧的可选增强。需要完整效果时：
+ASR 是旋律模糊消歧的可选增强。为降低结果等待时间，当前默认会对每次有效录音并行预取 ASR；旋律已经唯一定位时不会使用 ASR 文本，但仍会产生一次 ASR 请求。需要完整效果时：
 
 ```bash
 cp .env.example .env
@@ -425,6 +425,14 @@ cloudflared tunnel --url http://127.0.0.1:8000
 - 用户录音：录制 4～8 秒清唱或哼唱；
 - 结果诊断：显示当前句、下一句、拒识原因、各阶段耗时和 `debug_case_id`。
 
+固定十句人工回归录制页面：
+
+```text
+http://127.0.0.1:8000/demo/regression.html
+```
+
+录音与运行报告默认写入 `data/evaluation/`，该目录被 Git 忽略，不会把用户声音或 ASR 文本提交到仓库。
+
 ## CLI 识别
 
 ```bash
@@ -523,6 +531,20 @@ cd hum_song_mvp
 .venv/bin/python tools/diagnose_hum_mvp_lines.py
 ```
 
+回归本机固定十句录音（`fixture` 不访问外部 ASR，`live` 使用当前 ASR 配置）：
+
+```bash
+.venv/bin/python tools/evaluate_manual_regression.py --asr-mode fixture
+.venv/bin/python tools/evaluate_manual_regression.py --asr-mode live
+```
+
+通过已启动的 WebSocket 服务测量与浏览器一致的 `end_to_result`：
+
+```bash
+.venv/bin/python tools/evaluate_service_rt.py \
+  --report data/evaluation/manual_test_sets/manual_regression_v1/regression_report_service.json
+```
+
 将留有静音间隔的外部录音切成独立测试句：
 
 ```bash
@@ -551,21 +573,24 @@ cd hum_song_mvp
 | 《一程山路》库内逐句 | 17 / 20 | 0 | 3 |
 | 外部清唱 b 人声分离版 | 10 / 10 | 0 | 0 |
 | 手机现场录音复盘集 | 3 / 3 | 0 | 0 |
+| 固定十句人工清唱回归集 | 10 / 10 | 0 | 0 |
 
 手机复盘集覆盖三种关键路线：
 
 - 《消愁》：歌曲旋律证据明确，但同歌多个相似句需要 ASR 定位；
 - 《一程山路》：不同歌曲的旋律 margin 很小，ASR 在旋律 Top-K 内纠正歌曲和歌词行；
-- 《东北民谣》：旋律证据充分，不调用 ASR 直接返回下一句。
+- 《东北民谣》：旋律证据充分，不使用并行预取的 ASR 结果，直接返回下一句。
 
 两首库内逐句共 45 条的 3 个拒识分别来自有效音高变化不足、有效有声时长不足和短句歌词证据不足；没有错误接唱。这里保留拒识，不用全局放宽阈值换取表面通过率。
 
-当前开发机上，三条手机录音的 WebSocket `end_to_result` 分别约为：
+当前开发机上，固定十句人工清唱通过常驻 WebSocket 服务的 `end_to_result`：
 
-- 不调用 ASR：约 1.5 秒；
-- 调用 ASR：约 3.5～3.8 秒。
+- 平均：`1.934` 秒；
+- 中位数：`2.006` 秒；
+- P95：`2.799` 秒；
+- 正确率：`10 / 10`。
 
-ASR 网络状态会影响总耗时；首次请求还可能包含 librosa/Numba 初始化开销。
+服务启动时会预热静音裁剪、帧级 DTW、乐句 DTW 和数据库轮廓。ASR 网络状态、CPU 调度和输入时长仍会影响单次耗时，上述数字用于当前 7 首曲库的回归基线，不代表所有机器的固定上限。
 
 ## 已知限制
 

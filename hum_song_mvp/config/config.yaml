@@ -36,14 +36,16 @@ position_resolution:
   frame_ambiguity_cost_delta: 0.12
   frame_ambiguity_cost_ratio: 1.60
   require_phrase_support_for_frame_ambiguity: true
-  phrase_ambiguity_cost_delta: 0.15
-  phrase_ambiguity_cost_ratio: 1.30
+  phrase_ambiguity_cost_delta: 0.25
+  phrase_ambiguity_cost_ratio: 1.60
+  expand_all_song_lines_for_asr: true
 lyrics_asr:
   enabled: true
   provider: volcengine_auc
   request_timeout_seconds: 20.0
-  poll_interval_seconds: 0.5
+  poll_interval_seconds: 0.2
   max_wait_seconds: 20.0
+  speculative_parallel: true
   lyric_window_padding_seconds: 0.0
   min_lexical_characters: 2
   filler_characters: "啊呀啦哦噢嗯呜诶欸"
@@ -53,6 +55,9 @@ lyrics_asr:
   min_lyrics_score: 0.45
   min_lyrics_margin: 0.12
   min_discriminative_score: 0.20
+  melody_tiebreak_enabled: true
+  melody_tiebreak_lexical_epsilon: 0.001
+  melody_tiebreak_min_cost_margin: 0.10
 alignment_validation:
   # A line becomes a timing anchor only when ASR covers enough of its text.
   min_anchor_lines: 6
@@ -96,13 +101,15 @@ phrase_matching:
   partial_coverage_penalty: 0.50
   min_query_voiced_seconds: 0.60
   max_cost: 1.40
+  max_standalone_cost: 0.80
   min_standalone_margin: 0.10
   min_trusted_frame_coverage: 0.60
   strong_frame_coverage: 0.80
   min_trusted_frame_voiced_seconds: 0.75
   max_strong_frame_cost: 0.50
   min_standalone_frame_margin: 0.02
-  cross_song_asr_top_k: 4
+  cross_song_asr_top_k: 7
+  cross_song_expand_all_lines: true
   cross_song_positions_per_song: 3
   cross_song_position_cost_delta: 0.15
   cross_song_position_cost_ratio: 1.50

@@ -1,3 +1,5 @@
+import pytest
+
 from src.lyrics_reranker import LyricPosition, build_lyric_window, normalize_lyrics, rerank_lyric_positions
 
 
@@ -44,6 +46,28 @@ def test_reranker_rejects_words_shared_by_all_candidates():
     result = rerank_lyric_positions("一杯敬", positions(), settings())
     assert result.selected is None
     assert result.reason in {"lyrics_margin_too_small", "lyrics_no_discriminative_evidence"}
+
+
+def test_reranker_uses_melody_to_break_identical_lyric_tie():
+    repeated = [
+        LyricPosition(0, 10.0, 12.0, 0.40, "phrase", "如果有一天我变得很有钱"),
+        LyricPosition(4, 30.0, 32.0, 0.62, "phrase", "如果有一天我变得很有钱"),
+    ]
+    active_settings = settings()
+    active_settings.update(
+        {
+            "melody_tiebreak_enabled": True,
+            "melody_tiebreak_lexical_epsilon": 0.001,
+            "melody_tiebreak_min_cost_margin": 0.10,
+        }
+    )
+
+    result = rerank_lyric_positions("如果有一天我变得很有钱", repeated, active_settings)
+
+    assert result.reason is None
+    assert result.selected is not None
+    assert result.selected.line_index == 0
+    assert result.margin == pytest.approx(0.22)
 
 
 def test_build_lyric_window_uses_intersecting_lines():

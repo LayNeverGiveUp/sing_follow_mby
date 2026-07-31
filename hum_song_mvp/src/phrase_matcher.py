@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import librosa
+from numba import njit
 import numpy as np
 
 from .pitch_extractor import PitchFeatures
@@ -27,10 +27,68 @@ class PhraseMatch:
     segment_coverage: float
 
 
+@dataclass(frozen=True)
+class PreparedPhrase:
+    line_index: int
+    start_frame: int
+    end_frame: int
+    contour: np.ndarray
+
+
+def warm_phrase_dtw() -> None:
+    """Compile the fixed-step constrained DTW recurrence during startup."""
+    _accumulate_constrained_dtw(np.zeros((2, 2), dtype=np.float32), 0.25)
+
+
+def prepare_lyric_phrases(
+    reference: PitchFeatures,
+    lrc_lines: list[dict],
+    config: dict,
+) -> tuple[PreparedPhrase, ...]:
+    """Precompute the query-independent contour for every lyric line."""
+    settings = config["phrase_matching"]
+    points = int(settings["contour_points"])
+    hop = float(config["pitch"]["hop_seconds"])
+    prepared: list[PreparedPhrase] = []
+    for line in lrc_lines:
+        start_frame = max(0, int(np.floor(float(line["start_time"]) / hop)))
+        end_frame = min(
+            len(reference.pitch),
+            int(np.ceil(float(line.get("end_time", line["start_time"])) / hop)),
+        )
+        if end_frame - start_frame < 2:
+            continue
+        contour = phrase_contour(reference.pitch[start_frame:end_frame], points)
+        if contour is None:
+            continue
+        contour.setflags(write=False)
+        prepared.append(
+            PreparedPhrase(
+                line_index=int(line["index"]),
+                start_frame=start_frame,
+                end_frame=end_frame - 1,
+                contour=contour,
+            )
+        )
+    return tuple(prepared)
+
+
 def match_lyric_phrases(
     query: PitchFeatures,
     reference: PitchFeatures,
     lrc_lines: list[dict],
+    config: dict,
+) -> list[PhraseMatch]:
+    return match_prepared_lyric_phrases(
+        query,
+        prepare_lyric_phrases(reference, lrc_lines, config),
+        config,
+    )
+
+
+def match_prepared_lyric_phrases(
+    query: PitchFeatures,
+    phrases: tuple[PreparedPhrase, ...],
     config: dict,
 ) -> list[PhraseMatch]:
     settings = config["phrase_matching"]
@@ -43,25 +101,14 @@ def match_lyric_phrases(
     if query_voiced_seconds < float(settings.get("segmental_min_voiced_seconds", 0.0)):
         active_settings = dict(settings)
         active_settings["segment_coverages"] = [1.0]
-    hop = float(config["pitch"]["hop_seconds"])
     matches: list[PhraseMatch] = []
-    for line in lrc_lines:
-        start_frame = max(0, int(np.floor(float(line["start_time"]) / hop)))
-        end_frame = min(
-            len(reference.pitch),
-            int(np.ceil(float(line.get("end_time", line["start_time"])) / hop)),
-        )
-        if end_frame - start_frame < 2:
-            continue
-        reference_contour = phrase_contour(reference.pitch[start_frame:end_frame], points)
-        if reference_contour is None:
-            continue
-        score = segmental_contour_dtw(query_contour, reference_contour, active_settings)
+    for phrase in phrases:
+        score = segmental_contour_dtw(query_contour, phrase.contour, active_settings)
         matches.append(
             PhraseMatch(
-                line_index=int(line["index"]),
-                start_frame=start_frame,
-                end_frame=end_frame - 1,
+                line_index=phrase.line_index,
+                start_frame=phrase.start_frame,
+                end_frame=phrase.end_frame,
                 **score,
             )
         )
@@ -138,12 +185,7 @@ def _single_contour_dtw(query: np.ndarray, reference: np.ndarray, settings: dict
         float(settings["pitch_weight"]) * pitch_distance
         + float(settings["slope_weight"]) * slope_distance
     ).astype(np.float32)
-    accumulated = librosa.sequence.dtw(
-        C=local,
-        global_constraints=True,
-        band_rad=float(settings["band_radius"]),
-        backtrack=False,
-    )
+    accumulated = _accumulate_constrained_dtw(local, float(settings["band_radius"]))
     path = np.asarray(_trace_path(accumulated), dtype=np.int32)
     pitch_cost = float(np.mean(pitch_distance[path[:, 0], path[:, 1]]))
     slope_cost = float(np.mean(slope_distance[path[:, 0], path[:, 1]]))
@@ -162,6 +204,36 @@ def _single_contour_dtw(query: np.ndarray, reference: np.ndarray, settings: dict
         "range_penalty": range_penalty,
         "path_length": int(len(path)),
     }
+
+
+@njit(cache=False, nogil=True)
+def _accumulate_constrained_dtw(local: np.ndarray, band_radius: float) -> np.ndarray:
+    """Equivalent default librosa DTW recurrence without per-call setup overhead."""
+    rows, columns = local.shape
+    accumulated = np.full((rows, columns), np.inf, dtype=np.float64)
+    radius = int(np.round(band_radius * min(rows, columns)))
+    offset = abs(rows - columns)
+    for row in range(rows):
+        for column in range(columns):
+            if rows < columns:
+                outside = column - row >= radius + offset or row - column >= radius
+            else:
+                outside = column - row >= radius or row - column >= radius + offset
+            if outside:
+                continue
+            cost = float(local[row, column])
+            if row == 0 and column == 0:
+                accumulated[row, column] = cost
+                continue
+            best = np.inf
+            if row > 0 and column > 0:
+                best = accumulated[row - 1, column - 1]
+            if row > 0 and accumulated[row - 1, column] < best:
+                best = accumulated[row - 1, column]
+            if column > 0 and accumulated[row, column - 1] < best:
+                best = accumulated[row, column - 1]
+            accumulated[row, column] = cost + best
+    return accumulated
 
 
 def _trace_path(accumulated: np.ndarray) -> list[tuple[int, int]]:

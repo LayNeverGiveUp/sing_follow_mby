@@ -116,6 +116,16 @@ def rerank_lyric_positions(
     margin = best.score - scores[1].score
     if best.score < float(settings.get("min_lyrics_score", 0.45)):
         return LyricResolution(None, normalized_text, scores, margin, "asr_low_confidence")
+    if bool(settings.get("melody_tiebreak_enabled", False)):
+        epsilon = float(settings.get("melody_tiebreak_lexical_epsilon", 0.001))
+        tied = [score for score in scores if best.score - score.score <= epsilon]
+        if len(tied) > 1:
+            tied.sort(key=lambda item: item.position.melody_cost)
+            melody_margin = tied[1].position.melody_cost - tied[0].position.melody_cost
+            if melody_margin >= float(settings.get("melody_tiebreak_min_cost_margin", 0.10)):
+                selected = tied[0]
+                reordered = [selected, *[score for score in scores if score is not selected]]
+                return LyricResolution(selected.position, normalized_text, reordered, melody_margin, None)
     if margin < float(settings.get("min_lyrics_margin", 0.12)):
         return LyricResolution(None, normalized_text, scores, margin, "lyrics_margin_too_small")
     if best.discriminative_score < float(settings.get("min_discriminative_score", 0.20)):

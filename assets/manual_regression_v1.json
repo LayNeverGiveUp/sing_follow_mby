@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "plan_id": "manual_regression_v1",
+  "title": "人工清唱回归集 v1",
+  "description": "覆盖七首曲目、重复旋律和当前 ASR 候选漏召回案例的十句人工清唱。",
+  "items": [
+    {
+      "case_id": "01_yichengshanlu_00",
+      "song_id": "一程山路",
+      "lyric_index": 0,
+      "purpose": "短句与开篇定位"
+    },
+    {
+      "case_id": "02_yichengshanlu_04",
+      "song_id": "一程山路",
+      "lyric_index": 4,
+      "purpose": "重复旋律第一次出现"
+    },
+    {
+      "case_id": "03_yichengshanlu_12",
+      "song_id": "一程山路",
+      "lyric_index": 12,
+      "purpose": "重复旋律第二次出现及当前候选漏召回"
+    },
+    {
+      "case_id": "04_yichengshanlu_16",
+      "song_id": "一程山路",
+      "lyric_index": 16,
+      "purpose": "当前 ASR 低置信度复现"
+    },
+    {
+      "case_id": "05_xiaochou_05",
+      "song_id": "消愁",
+      "lyric_index": 5,
+      "purpose": "稳定基线"
+    },
+    {
+      "case_id": "06_dongbeiminyiao_00",
+      "song_id": "东北民谣",
+      "lyric_index": 0,
+      "purpose": "跨歌曲旋律消歧"
+    },
+    {
+      "case_id": "07_yiyu_18",
+      "song_id": "呓语",
+      "lyric_index": 18,
+      "purpose": "同歌重复段落"
+    },
+    {
+      "case_id": "08_youqian_00",
+      "song_id": "如果有一天我变得很有钱",
+      "lyric_index": 0,
+      "purpose": "相同歌词多次出现"
+    },
+    {
+      "case_id": "09_aiqingshenhua_12",
+      "song_id": "爱情神话",
+      "lyric_index": 12,
+      "purpose": "同歌重复副歌"
+    },
+    {
+      "case_id": "10_fengyinzhuxian_17",
+      "song_id": "风吟诛仙",
+      "lyric_index": 17,
+      "purpose": "长句与重复副歌"
+    }
+  ]
+}

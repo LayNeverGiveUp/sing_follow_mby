@@ -4,6 +4,7 @@ import base64
 from dataclasses import dataclass
 from io import BytesIO
 import os
+from threading import local
 from time import monotonic, sleep
 import uuid
 import wave
@@ -56,6 +57,7 @@ class VolcengineLyricsAsr:
         request_timeout: float = 20.0,
         poll_interval: float = 0.5,
         max_wait: float = 20.0,
+        session: requests.Session | None = None,
     ) -> None:
         self.access_token = access_token
         self.app_id = app_id
@@ -66,6 +68,18 @@ class VolcengineLyricsAsr:
         self.request_timeout = request_timeout
         self.poll_interval = poll_interval
         self.max_wait = max_wait
+        self._injected_session = session
+        self._thread_state = local()
+
+    @property
+    def session(self) -> requests.Session:
+        if self._injected_session is not None:
+            return self._injected_session
+        session = getattr(self._thread_state, "session", None)
+        if session is None:
+            session = requests.Session()
+            self._thread_state.session = session
+        return session
 
     @property
     def enabled(self) -> bool:
@@ -116,7 +130,7 @@ class VolcengineLyricsAsr:
                 "enable_lid": True,
             },
         }
-        response = requests.post(
+        response = self.session.post(
             self.submit_endpoint,
             headers=self._headers(task_id, submit=True),
             json=payload,
@@ -127,7 +141,7 @@ class VolcengineLyricsAsr:
     def _wait_for_result(self, task_id: str) -> dict:
         deadline = monotonic() + self.max_wait
         while True:
-            response = requests.post(
+            response = self.session.post(
                 self.query_endpoint,
                 headers=self._headers(task_id, submit=False),
                 json={},

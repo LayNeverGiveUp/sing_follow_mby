@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,9 +15,14 @@ from .config import load_config
 from .confidence import decide
 from .dtw_matcher import DtwResult, subsequence_dtw_nbest
 from .lyrics_asr import get_lyrics_asr
-from .lyrics_reranker import LyricPosition, build_lyric_window, rerank_lyric_positions
+from .lyrics_reranker import LyricPosition, rerank_lyric_positions
 from .lyric_mapper import map_lyrics
-from .phrase_matcher import PhraseMatch, match_lyric_phrases
+from .phrase_matcher import (
+    PhraseMatch,
+    PreparedPhrase,
+    match_prepared_lyric_phrases,
+    prepare_lyric_phrases,
+)
 from .pitch_extractor import PitchFeatures, extract_features
 
 
@@ -42,6 +49,34 @@ class SelectedPosition:
     route: str
 
 
+@dataclass(frozen=True)
+class DatabaseSong:
+    metadata: dict
+    reference: PitchFeatures
+    phrases: tuple[PreparedPhrase, ...]
+
+
+class PrefetchedLyricsAsr:
+    """Expose a normal ASR adapter while its request runs beside melody matching."""
+
+    def __init__(self, delegate, future) -> None:
+        self.delegate = delegate
+        self.future = future
+        self.enabled = bool(getattr(delegate, "enabled", False))
+        self.status = getattr(delegate, "status", "not_configured")
+        self.elapsed_ms: float | None = None
+
+    def transcribe(self, samples: np.ndarray, sample_rate: int):
+        del samples, sample_rate
+        transcript, elapsed_ms = self.future.result()
+        self.elapsed_ms = elapsed_ms
+        return transcript
+
+
+_MATCH_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="melody-match")
+_ASR_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="lyrics-asr")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Recognize a hummed phrase against a local song database.")
     parser.add_argument("--audio", required=True, type=Path)
@@ -62,19 +97,19 @@ def recognize_samples(samples: np.ndarray, database_dir: Path, config: dict, lyr
     stage_started = perf_counter()
     trimmed, start_sample, _ = trim_outer_silence(samples, float(config["audio"]["trim_top_db"]))
     trim_ms = (perf_counter() - stage_started) * 1000
+    lyrics_asr = _prefetch_lyrics_asr(trimmed, config, lyrics_asr)
     stage_started = perf_counter()
     query = extract_features(trimmed, config)
     feature_ms = (perf_counter() - stage_started) * 1000
-    candidate_ms: dict[str, float] = {}
-    stage_started = perf_counter()
-    candidates, frame_positions = _match_all(query, database_dir, config, candidate_ms)
-    match_ms = (perf_counter() - stage_started) * 1000
-    candidates.sort(key=lambda candidate: candidate.result.normalized_cost)
     if str(config["matching"].get("algorithm", "frame_dtw")) == "hybrid_phrase":
-        phrase_started = perf_counter()
-        phrase_candidates = _match_all_phrases(query, database_dir, config)
-        phrase_ms = (perf_counter() - phrase_started) * 1000
-        return _recognize_hybrid(
+        match_wall_started = perf_counter()
+        frame_future = _MATCH_EXECUTOR.submit(_timed_frame_match, query, database_dir, config)
+        phrase_future = _MATCH_EXECUTOR.submit(_timed_phrase_match, query, database_dir, config)
+        candidates, frame_positions, candidate_ms, match_ms = frame_future.result()
+        phrase_candidates, phrase_ms = phrase_future.result()
+        match_wall_ms = (perf_counter() - match_wall_started) * 1000
+        candidates.sort(key=lambda candidate: candidate.result.normalized_cost)
+        payload = _recognize_hybrid(
             samples,
             trimmed,
             start_sample,
@@ -88,11 +123,22 @@ def recognize_samples(samples: np.ndarray, database_dir: Path, config: dict, lyr
                 "f0_and_onset": round(feature_ms, 1),
                 "database_load_and_dtw": round(match_ms, 1),
                 "phrase_contour_matching": round(phrase_ms, 1),
+                "melody_matching_wall": round(match_wall_ms, 1),
                 "per_song_dtw": candidate_ms,
                 "total_recognition": round((perf_counter() - total_started) * 1000, 1),
             },
             lyrics_asr,
         )
+        payload["diagnostics"]["stage_ms"]["total_recognition"] = round(
+            (perf_counter() - total_started) * 1000,
+            1,
+        )
+        return payload
+    candidate_ms: dict[str, float] = {}
+    stage_started = perf_counter()
+    candidates, frame_positions = _match_all(query, database_dir, config, candidate_ms)
+    match_ms = (perf_counter() - stage_started) * 1000
+    candidates.sort(key=lambda candidate: candidate.result.normalized_cost)
     best = candidates[0] if candidates else None
     second_cost = candidates[1].result.normalized_cost if len(candidates) > 1 else None
     decision = decide(query, best.result if best else None, second_cost, config)
@@ -171,48 +217,74 @@ def _match_all(
     config: dict,
     candidate_ms: dict[str, float] | None = None,
 ) -> tuple[list[Candidate], dict[str, list[Candidate]]]:
-    if not database_dir.is_dir():
-        raise FileNotFoundError(f"Database directory does not exist: {database_dir}")
-    metadata_paths = sorted(database_dir.glob("*.json"))
-    if not metadata_paths:
-        raise ValueError(f"No song metadata JSON files found in {database_dir}")
     candidates = []
     positions: dict[str, list[Candidate]] = {}
-    for metadata_path in metadata_paths:
+    for song in _database_songs(database_dir, config):
         started = perf_counter()
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        required = {"song_id", "features_file", "feature_hop_seconds", "lrc_lines"}
-        missing = required - set(metadata)
-        if missing:
-            raise ValueError(f"Invalid database metadata {metadata_path}: missing {', '.join(sorted(missing))}")
-        feature_path = database_dir / metadata["features_file"]
-        if not feature_path.exists():
-            raise FileNotFoundError(f"Feature file referenced by {metadata_path} does not exist: {feature_path}")
-        reference = _load_features(feature_path)
         algorithm = str(config["matching"].get("algorithm", "frame_dtw"))
         if algorithm in {"frame_dtw", "hybrid_phrase"}:
-            results = subsequence_dtw_nbest(query, reference, config)
+            results = subsequence_dtw_nbest(query, song.reference, config)
         else:
             raise ValueError(f"Unsupported matching.algorithm: {algorithm}")
         if candidate_ms is not None:
-            candidate_ms[metadata["song_id"]] = round((perf_counter() - started) * 1000, 1)
-        song_positions = [Candidate(metadata, result) for result in results]
+            candidate_ms[song.metadata["song_id"]] = round((perf_counter() - started) * 1000, 1)
+        song_positions = [Candidate(song.metadata, result) for result in results]
         if song_positions:
             candidates.append(song_positions[0])
-            positions[metadata["song_id"]] = song_positions
+            positions[song.metadata["song_id"]] = song_positions
     return candidates, positions
 
 
 def _match_all_phrases(query: PitchFeatures, database_dir: Path, config: dict) -> list[PhraseCandidate]:
     candidates: list[PhraseCandidate] = []
-    for metadata_path in sorted(database_dir.glob("*.json")):
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        reference = _load_features(database_dir / metadata["features_file"])
+    for song in _database_songs(database_dir, config):
         candidates.extend(
-            PhraseCandidate(metadata, match)
-            for match in match_lyric_phrases(query, reference, metadata["lrc_lines"], config)
+            PhraseCandidate(song.metadata, match)
+            for match in match_prepared_lyric_phrases(query, song.phrases, config)
         )
     return sorted(candidates, key=lambda candidate: candidate.match.cost)
+
+
+def _timed_frame_match(
+    query: PitchFeatures,
+    database_dir: Path,
+    config: dict,
+) -> tuple[list[Candidate], dict[str, list[Candidate]], dict[str, float], float]:
+    candidate_ms: dict[str, float] = {}
+    started = perf_counter()
+    candidates, positions = _match_all(query, database_dir, config, candidate_ms)
+    return candidates, positions, candidate_ms, (perf_counter() - started) * 1000
+
+
+def _timed_phrase_match(
+    query: PitchFeatures,
+    database_dir: Path,
+    config: dict,
+) -> tuple[list[PhraseCandidate], float]:
+    started = perf_counter()
+    candidates = _match_all_phrases(query, database_dir, config)
+    return candidates, (perf_counter() - started) * 1000
+
+
+def _prefetch_lyrics_asr(samples: np.ndarray, config: dict, lyrics_asr):
+    settings = config.get("lyrics_asr", {})
+    if (
+        lyrics_asr is None
+        or not bool(getattr(lyrics_asr, "enabled", False))
+        or not bool(settings.get("speculative_parallel", False))
+        or str(config["matching"].get("algorithm", "frame_dtw")) != "hybrid_phrase"
+        or samples.size == 0
+    ):
+        return lyrics_asr
+    sample_rate = int(config["audio"]["sample_rate"])
+    future = _ASR_EXECUTOR.submit(_timed_asr_transcribe, lyrics_asr, samples, sample_rate)
+    return PrefetchedLyricsAsr(lyrics_asr, future)
+
+
+def _timed_asr_transcribe(lyrics_asr, samples: np.ndarray, sample_rate: int):
+    started = perf_counter()
+    transcript = lyrics_asr.transcribe(samples, sample_rate)
+    return transcript, (perf_counter() - started) * 1000
 
 
 def _best_phrase_candidates_by_song(candidates: list[PhraseCandidate]) -> list[PhraseCandidate]:
@@ -292,7 +364,8 @@ def _recognize_hybrid(
     )
     phrase_usable = phrase is not None and phrase.match.cost <= float(settings["max_cost"])
     phrase_confident = bool(
-        phrase_usable
+        phrase is not None
+        and phrase.match.cost <= float(settings.get("max_standalone_cost", settings["max_cost"]))
         and (phrase_margin is None or phrase_margin >= float(settings["min_standalone_margin"]))
     )
     strong_frame_conflict = bool(
@@ -432,42 +505,16 @@ def _resolve_cross_song_position(
         return None, "no_reliable_hybrid_candidate"
 
     metadata_by_song = {str(candidate.metadata["song_id"]): candidate.metadata for candidate in top_songs}
-    padding = float(config.get("lyrics_asr", {}).get("lyric_window_padding_seconds", 0.0))
-    positions: list[LyricPosition] = []
-    per_song_limit = int(settings.get("cross_song_positions_per_song", 3))
-    delta = float(settings.get("cross_song_position_cost_delta", 0.15))
-    ratio = float(settings.get("cross_song_position_cost_ratio", 1.50))
-    max_cost = float(settings["max_cost"])
-    for song_candidate in top_songs:
-        song_id = str(song_candidate.metadata["song_id"])
-        lines = song_candidate.metadata["lrc_lines"]
-        best_cost = float(song_candidate.match.cost)
-        cost_limit = min(max_cost, best_cost + delta, best_cost * ratio if best_cost > 1e-8 else best_cost + delta)
-        by_outcome: dict[str, LyricPosition] = {}
-        for candidate in phrase_candidates:
-            if str(candidate.metadata["song_id"]) != song_id or candidate.match.cost > cost_limit:
-                continue
-            hop = float(candidate.metadata["feature_hop_seconds"])
-            start_time = candidate.match.start_frame * hop
-            end_time = candidate.match.end_frame * hop
-            line_index = int(candidate.match.line_index)
-            outcome_key = _lyric_outcome_key(lines, line_index)
-            position = LyricPosition(
-                line_index=line_index,
-                start_time=start_time,
-                end_time=end_time,
-                melody_cost=float(candidate.match.cost),
-                source="phrase_dtw_cross_song",
-                lyric_text=build_lyric_window(lines, start_time, end_time, padding),
-                outcome_key=outcome_key,
-                song_id=song_id,
-            )
-            existing = by_outcome.get(outcome_key)
-            if existing is None or position.melody_cost < existing.melody_cost:
-                by_outcome[outcome_key] = position
-        positions.extend(sorted(by_outcome.values(), key=lambda item: item.melody_cost)[:per_song_limit])
-
-    positions.sort(key=lambda item: item.melody_cost)
+    if bool(settings.get("cross_song_expand_all_lines", False)):
+        positions = _expand_positions_for_asr(
+            [],
+            metadata_by_song,
+            phrase_candidates,
+            config,
+            source="phrase_dtw_cross_song_catalog",
+        )
+    else:
+        positions = _shortlisted_cross_song_positions(top_songs, phrase_candidates, config)
     diagnostics["cross_song_position_candidates"] = [
         {
             "song_id": position.song_id,
@@ -569,7 +616,13 @@ def _resolve_positions_with_lyrics(
         }
         diagnostics.setdefault("stage_ms", {})["lyrics_asr"] = round((perf_counter() - started) * 1000, 1)
         return None, "asr_unavailable_for_ambiguous_melody"
-    diagnostics.setdefault("stage_ms", {})["lyrics_asr"] = round((perf_counter() - started) * 1000, 1)
+    wait_ms = (perf_counter() - started) * 1000
+    stage_ms = diagnostics.setdefault("stage_ms", {})
+    stage_ms["lyrics_asr_wait"] = round(wait_ms, 1)
+    stage_ms["lyrics_asr"] = round(
+        float(getattr(lyrics_asr, "elapsed_ms", None) or wait_ms),
+        1,
+    )
     if transcript is None or not str(transcript.text).strip():
         diagnostics["lyrics_asr"] = {"triggered": True, "status": "no_text", "source": asr_status}
         return None, "asr_no_lexical_content"
@@ -653,7 +706,7 @@ def _ambiguous_lyric_positions(
                     end_time=end_time,
                     melody_cost=float(candidate.result.normalized_cost),
                     source="frame_dtw",
-                    lyric_text=build_lyric_window(lines, start_time, end_time, padding),
+                    lyric_text=_lyric_text_for_index(lines, line_index),
                     outcome_key=_lyric_outcome_key(lines, line_index),
                     song_id=str(song_id),
                 )
@@ -688,7 +741,7 @@ def _ambiguous_lyric_positions(
                     end_time=end_time,
                     melody_cost=float(candidate.match.cost),
                     source="phrase_dtw",
-                    lyric_text=build_lyric_window(lines, start_time, end_time, padding),
+                    lyric_text=_lyric_text_for_index(lines, int(candidate.match.line_index)),
                     outcome_key=_lyric_outcome_key(lines, int(candidate.match.line_index)),
                     song_id=str(song_id),
                 )
@@ -709,7 +762,121 @@ def _ambiguous_lyric_positions(
     ambiguous = [position for position in distinct if position.melody_cost <= cost_limit]
     if len({position.outcome_key for position in ambiguous}) < 2:
         return ambiguous[:1]
+    if bool(settings.get("expand_all_song_lines_for_asr", False)):
+        return _expand_positions_for_asr(
+            ambiguous,
+            {str(song_id): selected.metadata},
+            phrase_candidates,
+            config,
+            source="phrase_dtw_same_song_catalog",
+        )
     return ambiguous
+
+
+def _shortlisted_cross_song_positions(
+    top_songs: list[PhraseCandidate],
+    phrase_candidates: list[PhraseCandidate],
+    config: dict,
+) -> list[LyricPosition]:
+    settings = config["phrase_matching"]
+    positions: list[LyricPosition] = []
+    per_song_limit = int(settings.get("cross_song_positions_per_song", 3))
+    delta = float(settings.get("cross_song_position_cost_delta", 0.15))
+    ratio = float(settings.get("cross_song_position_cost_ratio", 1.50))
+    max_cost = float(settings["max_cost"])
+    for song_candidate in top_songs:
+        song_id = str(song_candidate.metadata["song_id"])
+        lines = song_candidate.metadata["lrc_lines"]
+        best_cost = float(song_candidate.match.cost)
+        cost_limit = min(max_cost, best_cost + delta, best_cost * ratio if best_cost > 1e-8 else best_cost + delta)
+        by_outcome: dict[str, LyricPosition] = {}
+        for candidate in phrase_candidates:
+            if str(candidate.metadata["song_id"]) != song_id or candidate.match.cost > cost_limit:
+                continue
+            hop = float(candidate.metadata["feature_hop_seconds"])
+            line_index = int(candidate.match.line_index)
+            outcome_key = _lyric_outcome_key(lines, line_index)
+            position = LyricPosition(
+                line_index=line_index,
+                start_time=candidate.match.start_frame * hop,
+                end_time=candidate.match.end_frame * hop,
+                melody_cost=float(candidate.match.cost),
+                source="phrase_dtw_cross_song",
+                lyric_text=_lyric_text_for_index(lines, line_index),
+                outcome_key=outcome_key,
+                song_id=song_id,
+            )
+            existing = by_outcome.get(outcome_key)
+            if existing is None or position.melody_cost < existing.melody_cost:
+                by_outcome[outcome_key] = position
+        positions.extend(sorted(by_outcome.values(), key=lambda item: item.melody_cost)[:per_song_limit])
+    return sorted(positions, key=lambda item: item.melody_cost)
+
+
+def _expand_positions_for_asr(
+    positions: list[LyricPosition],
+    metadata_by_song: dict[str, dict],
+    phrase_candidates: list[PhraseCandidate],
+    config: dict,
+    source: str,
+) -> list[LyricPosition]:
+    """Add every lyric outcome inside melody-shortlisted songs for ASR reranking."""
+    phrase_by_line: dict[tuple[str, int], PhraseCandidate] = {}
+    for candidate in phrase_candidates:
+        song_id = str(candidate.metadata["song_id"])
+        if song_id not in metadata_by_song:
+            continue
+        key = (song_id, int(candidate.match.line_index))
+        existing = phrase_by_line.get(key)
+        if existing is None or candidate.match.cost < existing.match.cost:
+            phrase_by_line[key] = candidate
+
+    expanded = list(positions)
+    fallback_cost = float(config["phrase_matching"]["max_cost"])
+    for song_id, metadata in metadata_by_song.items():
+        lines = metadata["lrc_lines"]
+        for line in lines:
+            line_index = int(line["index"])
+            candidate = phrase_by_line.get((song_id, line_index))
+            if candidate is not None:
+                hop = float(candidate.metadata["feature_hop_seconds"])
+                start_time = candidate.match.start_frame * hop
+                end_time = candidate.match.end_frame * hop
+                melody_cost = float(candidate.match.cost)
+            else:
+                start_time = float(line["start_time"])
+                end_time = float(line.get("end_time", start_time))
+                melody_cost = fallback_cost
+            expanded.append(
+                LyricPosition(
+                    line_index=line_index,
+                    start_time=start_time,
+                    end_time=end_time,
+                    melody_cost=melody_cost,
+                    source=source,
+                    lyric_text=str(line.get("text", "")).strip(),
+                    outcome_key=_lyric_outcome_key(lines, line_index),
+                    song_id=song_id,
+                )
+            )
+
+    by_outcome: dict[tuple[str, str], LyricPosition] = {}
+    for position in expanded:
+        song_id = position.song_id or next(iter(metadata_by_song))
+        outcome_key = position.outcome_key or _lyric_outcome_key(
+            metadata_by_song[song_id]["lrc_lines"],
+            position.line_index,
+        )
+        key = (song_id, outcome_key)
+        existing = by_outcome.get(key)
+        if existing is None or position.melody_cost < existing.melody_cost:
+            by_outcome[key] = position
+    return sorted(by_outcome.values(), key=lambda item: item.melody_cost)
+
+
+def _lyric_text_for_index(lines: list[dict], line_index: int) -> str:
+    line = next((item for item in lines if int(item["index"]) == line_index), None)
+    return str(line.get("text", "")).strip() if line else ""
 
 
 def _lyric_outcome_key(lines: list[dict], line_index: int) -> str:
@@ -768,6 +935,70 @@ def _hybrid_rejected(
         "candidate_count": len(frame_candidates) + len(phrase_candidates),
         "diagnostics": diagnostics,
     }
+
+
+def warm_recognition_database(database_dir: Path, config: dict) -> None:
+    """Load immutable song features and phrase contours before the first request."""
+    _database_songs(database_dir, config)
+
+
+def _database_songs(database_dir: Path, config: dict) -> tuple[DatabaseSong, ...]:
+    resolved = database_dir.resolve()
+    if not resolved.is_dir():
+        raise FileNotFoundError(f"Database directory does not exist: {resolved}")
+    metadata_paths = sorted(resolved.glob("*.json"))
+    if not metadata_paths:
+        raise ValueError(f"No song metadata JSON files found in {resolved}")
+    signature_paths = sorted((*metadata_paths, *resolved.glob("*.npz")))
+    signature = tuple(
+        (path.name, path.stat().st_mtime_ns, path.stat().st_size)
+        for path in signature_paths
+    )
+    return _load_database_songs(
+        str(resolved),
+        signature,
+        int(config["phrase_matching"]["contour_points"]),
+        float(config["pitch"]["hop_seconds"]),
+    )
+
+
+@lru_cache(maxsize=4)
+def _load_database_songs(
+    database_dir: str,
+    signature: tuple[tuple[str, int, int], ...],
+    contour_points: int,
+    pitch_hop_seconds: float,
+) -> tuple[DatabaseSong, ...]:
+    # `signature` deliberately participates in the cache key so rebuilding any
+    # JSON/NPZ file invalidates this snapshot without a process restart.
+    del signature
+    directory = Path(database_dir)
+    phrase_config = {
+        "pitch": {"hop_seconds": pitch_hop_seconds},
+        "phrase_matching": {"contour_points": contour_points},
+    }
+    songs: list[DatabaseSong] = []
+    for metadata_path in sorted(directory.glob("*.json")):
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        required = {"song_id", "features_file", "feature_hop_seconds", "lrc_lines"}
+        missing = required - set(metadata)
+        if missing:
+            raise ValueError(f"Invalid database metadata {metadata_path}: missing {', '.join(sorted(missing))}")
+        feature_path = directory / metadata["features_file"]
+        if not feature_path.exists():
+            raise FileNotFoundError(f"Feature file referenced by {metadata_path} does not exist: {feature_path}")
+        reference = _load_features(feature_path)
+        for values in vars(reference).values():
+            if isinstance(values, np.ndarray):
+                values.setflags(write=False)
+        songs.append(
+            DatabaseSong(
+                metadata=metadata,
+                reference=reference,
+                phrases=prepare_lyric_phrases(reference, metadata["lrc_lines"], phrase_config),
+            )
+        )
+    return tuple(songs)
 
 
 def _load_features(path: Path) -> PitchFeatures:

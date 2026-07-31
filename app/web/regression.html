@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>10 句人工录音回归集</title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="./regression.css?v=1" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="card recorder-card">
+        <header>
+          <div>
+            <p class="eyebrow">Manual Regression Dataset</p>
+            <h1>10 句人工录音回归集</h1>
+          </div>
+          <a href="./">返回识别页面</a>
+        </header>
+
+        <div class="progress-row">
+          <strong id="progressText">正在加载录制计划…</strong>
+          <div class="progress-track"><span id="progressBar"></span></div>
+        </div>
+
+        <section class="prompt">
+          <p class="eyebrow" id="caseMeta">第 -- / 10 句</p>
+          <h2 id="lyricText">正在加载歌词…</h2>
+          <p class="next-line">期望下一句：<span id="nextLyricText">--</span></p>
+          <p class="purpose" id="purposeText"></p>
+          <audio id="referenceAudio" controls preload="none"></audio>
+        </section>
+
+        <div class="actions">
+          <button id="previousButton" class="secondary">上一句</button>
+          <button id="recordButton" class="primary">开始录制</button>
+          <button id="nextButton" class="secondary">下一句</button>
+        </div>
+
+        <p class="hint" id="recordingHint">
+          先听参考切片熟悉内容，再点击“开始录制”，完整唱完当前一句后停止。
+        </p>
+        <audio id="recordedAudio" controls></audio>
+
+        <section class="result">
+          <div class="result-title">
+            <strong id="resultTitle">等待录制</strong>
+            <span id="saveStatus"></span>
+          </div>
+          <pre id="resultJson">{}</pre>
+        </section>
+      </section>
+
+      <aside class="card list-card">
+        <p class="eyebrow">Recording Plan</p>
+        <h2>录制清单</h2>
+        <ol id="caseList"></ol>
+      </aside>
+    </main>
+
+    <script src="./regression.js?v=1"></script>
+  </body>
+</html>

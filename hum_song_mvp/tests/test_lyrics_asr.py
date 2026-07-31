@@ -68,8 +68,8 @@ def test_auc_asr_submits_base64_wav_and_polls_result(tmp_path, monkeypatch):
             },
         )
 
-    monkeypatch.setattr("src.lyrics_asr.requests.post", fake_post)
     client = make_client(tmp_path)
+    monkeypatch.setattr(client.session, "post", fake_post)
     transcript = client.transcribe(np.ones(16000, dtype=np.float32) * 0.1, 16000)
 
     assert transcript is not None
@@ -95,8 +95,9 @@ def test_auc_asr_waits_while_task_is_processing(tmp_path, monkeypatch):
         payload = {"result": {"text": "歌词"}} if status == "20000000" and url.endswith("/query") else {}
         return FakeResponse(status, payload)
 
-    monkeypatch.setattr("src.lyrics_asr.requests.post", fake_post)
-    transcript = make_client(tmp_path).transcribe(np.ones(8000, dtype=np.float32) * 0.1, 16000)
+    client = make_client(tmp_path)
+    monkeypatch.setattr(client.session, "post", fake_post)
+    transcript = client.transcribe(np.ones(8000, dtype=np.float32) * 0.1, 16000)
 
     assert transcript is not None
     assert transcript.text == "歌词"

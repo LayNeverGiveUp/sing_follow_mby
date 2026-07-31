@@ -11,10 +11,15 @@ from urllib.parse import quote
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+import numpy as np
 
 from app.debug_capture import DebugCapture, capture_pcm16, write_capture_result
 from app.hum_recognizer import hum_mvp_recognizer
+from app.regression_dataset import build_plan_payload, load_plan, resolve_case, save_case
+from hum_song_mvp.src.audio_io import trim_outer_silence
 from hum_song_mvp.src.dtw_matcher import warm_dtw
+from hum_song_mvp.src.phrase_matcher import warm_phrase_dtw
+from hum_song_mvp.src.recognize import warm_recognition_database
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -22,6 +27,8 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 DEBUG_RECORDINGS_DIR = Path(os.getenv("HUM_SONG_DEBUG_RECORDINGS_DIR", DATA_DIR / "debug_recordings"))
 QUERIES_DIR = DATA_DIR / "queries"
+REGRESSION_DATASET_DIR = DATA_DIR / "evaluation" / "manual_test_sets"
+REGRESSION_PLAN = load_plan(BASE_DIR / "assets" / "manual_regression_v1.json")
 # Runtime-only media is intentionally not committed. Creating the mount point
 # here keeps a fresh clone bootable even when optional one-click clips are absent.
 QUERIES_DIR.mkdir(parents=True, exist_ok=True)
@@ -32,8 +39,17 @@ app.mount("/demo", StaticFiles(directory=BASE_DIR / "app" / "web", html=True), n
 
 @app.on_event("startup")
 def warm_matcher_runtime() -> None:
+    sample_rate = int(hum_mvp_recognizer.config["audio"]["sample_rate"])
+    warmup = np.zeros(sample_rate, dtype=np.float32)
+    positions = np.arange(sample_rate // 2, dtype=np.float32)
+    warmup[sample_rate // 4 : 3 * sample_rate // 4] = 0.1 * np.sin(
+        2.0 * np.pi * 220.0 * positions / sample_rate
+    )
+    trim_outer_silence(warmup, float(hum_mvp_recognizer.config["audio"]["trim_top_db"]))
     warm_dtw()
-    logger.info("hum_mvp_dtw_warmed")
+    warm_phrase_dtw()
+    warm_recognition_database(hum_mvp_recognizer.database_dir, hum_mvp_recognizer.config)
+    logger.info("hum_mvp_matcher_warmed")
 
 
 @app.get("/health")
@@ -85,6 +101,17 @@ def hum_mvp_test_queries() -> dict[str, list[dict[str, Any]]]:
     return {"items": items}
 
 
+@app.get("/v1/hum-mvp/regression-plan")
+def hum_mvp_regression_plan() -> dict[str, Any]:
+    """Return the fixed ten-line recording plan and its persisted progress."""
+    return build_plan_payload(
+        REGRESSION_PLAN,
+        hum_mvp_recognizer.database_dir,
+        QUERIES_DIR,
+        REGRESSION_DATASET_DIR,
+    )
+
+
 @app.get("/")
 def root() -> RedirectResponse:
     return RedirectResponse(url="/demo/")
@@ -105,6 +132,7 @@ async def realtime_match(websocket: WebSocket) -> None:
     started = False
     start_metadata: dict[str, Any] = {}
     debug_capture: DebugCapture | None = None
+    regression_case: dict[str, Any] | None = None
     try:
         while True:
             message = await websocket.receive()
@@ -137,6 +165,19 @@ async def realtime_match(websocket: WebSocket) -> None:
                     "expected_lyric_index": payload.get("expected_lyric_index"),
                     "user_agent": websocket.headers.get("user-agent", "")[:512],
                 }
+                regression_case = None
+                if start_metadata["input_source"] == "manual_regression":
+                    plan_id = str(payload.get("test_plan_id", ""))
+                    case_id = str(payload.get("test_case_id", ""))
+                    regression_case = resolve_case(REGRESSION_PLAN, plan_id, case_id)
+                    start_metadata.update(
+                        {
+                            "test_plan_id": REGRESSION_PLAN["plan_id"],
+                            "test_case_id": regression_case["case_id"],
+                            "expected_song_id": regression_case["song_id"],
+                            "expected_lyric_index": int(regression_case["lyric_index"]),
+                        }
+                    )
                 started = True
                 await websocket.send_json(
                     {
@@ -175,6 +216,30 @@ async def realtime_match(websocket: WebSocket) -> None:
                     },
                 }
             )
+            if debug_capture is not None and regression_case is not None:
+                try:
+                    audio_path, _ = save_case(
+                        REGRESSION_DATASET_DIR,
+                        REGRESSION_PLAN,
+                        regression_case,
+                        debug_capture,
+                        result,
+                    )
+                    result.update(
+                        {
+                            "test_dataset_saved": True,
+                            "test_plan_id": REGRESSION_PLAN["plan_id"],
+                            "test_case_id": regression_case["case_id"],
+                            "test_audio_file": str(audio_path.relative_to(BASE_DIR)),
+                        }
+                    )
+                except OSError as exc:
+                    logger.exception(
+                        "hum_mvp_regression_save_failed case=%s error=%s",
+                        regression_case["case_id"],
+                        exc,
+                    )
+                    result["test_dataset_saved"] = False
             if debug_capture is not None:
                 result["debug_case_id"] = debug_capture.case_id
                 result["debug_saved"] = _save_debug_result(debug_capture, result)
@@ -185,6 +250,30 @@ async def realtime_match(websocket: WebSocket) -> None:
         return
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
         error_payload: dict[str, Any] = {"type": "error", "message": str(exc)}
+        if debug_capture is not None and regression_case is not None:
+            try:
+                audio_path, _ = save_case(
+                    REGRESSION_DATASET_DIR,
+                    REGRESSION_PLAN,
+                    regression_case,
+                    debug_capture,
+                    error_payload,
+                )
+                error_payload.update(
+                    {
+                        "test_dataset_saved": True,
+                        "test_plan_id": REGRESSION_PLAN["plan_id"],
+                        "test_case_id": regression_case["case_id"],
+                        "test_audio_file": str(audio_path.relative_to(BASE_DIR)),
+                    }
+                )
+            except OSError as save_exc:
+                logger.exception(
+                    "hum_mvp_regression_save_failed case=%s error=%s",
+                    regression_case["case_id"],
+                    save_exc,
+                )
+                error_payload["test_dataset_saved"] = False
         if debug_capture is not None:
             error_payload["debug_case_id"] = debug_capture.case_id
             error_payload["debug_saved"] = _save_debug_result(debug_capture, error_payload)
